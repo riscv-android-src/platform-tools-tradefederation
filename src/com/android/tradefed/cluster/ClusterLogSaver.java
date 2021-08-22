@@ -130,6 +130,7 @@ public class ClusterLogSaver implements ILogSaver {
     }
 
     /** Returns a Path stream for all files under a directory matching a given pattern. */
+    @SuppressWarnings("StreamResourceLeak")
     private Stream<Path> getPathStream(final File dir, final Pattern pattern) throws IOException {
         return Files.find(
                 dir.toPath(),
@@ -362,8 +363,7 @@ public class ClusterLogSaver implements ILogSaver {
             testContext.setCommandLine(mRetryCommandLine);
             testContext.addEnvVars(envVars);
             final String name = getRelativePath(contextFile.toPath()).toString();
-            testContext.addTestResource(
-                    new TestResource(name, outputFileUrls.get(contextFile), false, ""));
+            testContext.addTestResource(new TestResource(name, outputFileUrls.get(contextFile)));
             try {
                 CLog.i("Updating test context: %s", testContext.toString());
                 client.updateTestContext(mRequestId, mCommandId, testContext);

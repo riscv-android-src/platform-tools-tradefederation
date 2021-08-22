@@ -70,6 +70,7 @@ public class ClearcutClient {
     private final int mLogSource;
     private final String mUrl;
     private final UserType mUserType;
+    private final String mSubToolName;
 
     // Consider synchronized list
     private List<LogRequest> mExternalEventQueue;
@@ -78,15 +79,15 @@ public class ClearcutClient {
     // Whether the clearcut client should be inop
     private boolean mDisabled = false;
 
-    public ClearcutClient() {
-        this(null);
+    public ClearcutClient(String subToolName) {
+        this(null, subToolName);
     }
 
     /**
      * Create Client with customized posting URL and forcing whether it's internal or external user.
      */
     @VisibleForTesting
-    protected ClearcutClient(String url) {
+    protected ClearcutClient(String url, String subToolName) {
         mDisabled = isClearcutDisabled();
 
         // We still have to set the 'final' variable so go through the assignments before returning
@@ -104,6 +105,7 @@ public class ClearcutClient {
         }
         mRunId = UUID.randomUUID().toString();
         mExternalEventQueue = new ArrayList<>();
+        mSubToolName = subToolName;
 
         if (mDisabled) {
             return;
@@ -148,7 +150,8 @@ public class ClearcutClient {
         LogEvent.Builder logEvent = LogEvent.newBuilder();
         logEvent.setEventTimeMs(System.currentTimeMillis());
         logEvent.setSourceExtension(
-                ClearcutEventHelper.createStartEvent(getGroupingKey(), mRunId, mUserType));
+                ClearcutEventHelper.createStartEvent(
+                        getGroupingKey(), mRunId, mUserType, mSubToolName));
         request.addLogEvent(logEvent);
         queueEvent(request.build());
     }
@@ -162,7 +165,8 @@ public class ClearcutClient {
         LogEvent.Builder logEvent = LogEvent.newBuilder();
         logEvent.setEventTimeMs(System.currentTimeMillis());
         logEvent.setSourceExtension(
-                ClearcutEventHelper.createRunStartEvent(getGroupingKey(), mRunId, mUserType));
+                ClearcutEventHelper.createRunStartEvent(
+                        getGroupingKey(), mRunId, mUserType, mSubToolName));
         request.addLogEvent(logEvent);
         queueEvent(request.build());
     }

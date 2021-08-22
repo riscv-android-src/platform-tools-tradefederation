@@ -16,39 +16,43 @@
 
 package com.android.tradefed.util;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.TestDeviceState;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 @RunWith(JUnit4.class)
 public class DeviceRecoveryModeUtilTest {
 
-    private IManagedTestDevice mMockManagedDevice;
-    private IDevice mMockDevice;
+    @Mock IManagedTestDevice mMockManagedDevice;
+    @Mock IDevice mMockDevice;
 
     @Before
     public void setUp() throws Throwable {
-        mMockManagedDevice = EasyMock.createMock(IManagedTestDevice.class);
-        mMockDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockManagedDevice.getIDevice()).andReturn(mMockDevice).anyTimes();
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockManagedDevice.getIDevice()).thenReturn(mMockDevice);
     }
 
     @Test
     public void testBootOutOfRecovery() throws Throwable {
-        mMockDevice.reboot((String) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        mMockManagedDevice.waitForDeviceAvailable(EasyMock.anyLong());
-        EasyMock.expectLastCall();
-        mMockManagedDevice.postBootSetup();
-        EasyMock.expectLastCall();
-        EasyMock.expect(mMockManagedDevice.getDeviceState()).andReturn(TestDeviceState.RECOVERY);
-        EasyMock.replay(mMockDevice, mMockManagedDevice);
+
+        when(mMockManagedDevice.getDeviceState()).thenReturn(TestDeviceState.RECOVERY);
+
         DeviceRecoveryModeUtil.bootOutOfRecovery(mMockManagedDevice, 1000000000);
+        verify(mMockDevice, times(1)).reboot((String) Mockito.any());
+        verify(mMockManagedDevice, times(1)).waitForDeviceAvailable(Mockito.anyLong());
+        verify(mMockManagedDevice, times(1)).postBootSetup();
     }
 }

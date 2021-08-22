@@ -71,6 +71,7 @@ public class TestRecordProtoUtil {
             } else {
                 record = TestRecord.parseFrom(is);
             }
+            is = null;
         }
         return record;
     }

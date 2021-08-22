@@ -19,16 +19,17 @@ package com.android.tradefed.testtype.suite.params.multiuser;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparer;
 import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class RunOnWorkProfileParameterHandler implements IModuleParameter {
+public class RunOnWorkProfileParameterHandler implements IModuleParameterHandler {
 
     private static final String REQUIRE_RUN_ON_WORK_PROFILE_NAME =
             "com.android.bedstead.harrier.annotations.RequireRunOnWorkProfile";
@@ -45,6 +46,9 @@ public class RunOnWorkProfileParameterHandler implements IModuleParameter {
             List<ITargetPreparer> preparers = deviceConfig.getTargetPreparers();
             // The first thing the module will do is run on a work profile
             preparers.add(0, new RunOnWorkProfileTargetPreparer());
+
+            // Remove the target preparer which forces onto system user
+            preparers.removeIf(preparer -> preparer instanceof RunOnSystemUserTargetPreparer);
         }
     }
 

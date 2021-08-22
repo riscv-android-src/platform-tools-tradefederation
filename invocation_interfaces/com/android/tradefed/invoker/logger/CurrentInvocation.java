@@ -52,6 +52,13 @@ public class CurrentInvocation {
         }
     }
 
+    /** Describes the level of isolation */
+    public enum IsolationGrade {
+        NOT_ISOLATED, // No action were taken to isolate the test.
+        REBOOT_ISOLATED, // Reboot was done before the test.
+        FULLY_ISOLATED; // Test received a fresh device.
+    }
+
     private CurrentInvocation() {}
 
     /** Internal storage of the invocation values. */
@@ -59,6 +66,8 @@ public class CurrentInvocation {
         public Map<InvocationInfo, File> mInvocationInfoFiles = new HashMap<>();
         public ExecutionFiles mExecutionFiles;
         public ActionInProgress mActionInProgress = ActionInProgress.UNSET;
+        public IsolationGrade mIsModuleIsolated = IsolationGrade.FULLY_ISOLATED;
+        public IsolationGrade mIsRunIsolated = IsolationGrade.FULLY_ISOLATED;
     }
 
     /**
@@ -167,6 +176,50 @@ public class CurrentInvocation {
                 return null;
             }
             return mPerGroupInfo.get(group).mActionInProgress;
+        }
+    }
+
+    /** Returns whether the current suite module executed was isolated or not. */
+    public static IsolationGrade moduleCurrentIsolation() {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                return IsolationGrade.NOT_ISOLATED;
+            }
+            return mPerGroupInfo.get(group).mIsModuleIsolated;
+        }
+    }
+
+    /** Update whether the suite module is isolated or not. */
+    public static void setModuleIsolation(IsolationGrade isolation) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
+            mPerGroupInfo.get(group).mIsModuleIsolated = isolation;
+        }
+    }
+
+    /** Returns whether the current test run executed was isolated or not. */
+    public static IsolationGrade runCurrentIsolation() {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                return IsolationGrade.NOT_ISOLATED;
+            }
+            return mPerGroupInfo.get(group).mIsRunIsolated;
+        }
+    }
+
+    /** Update whether the test run is isolated or not. */
+    public static void setRunIsolation(IsolationGrade isolation) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
+            mPerGroupInfo.get(group).mIsRunIsolated = isolation;
         }
     }
 

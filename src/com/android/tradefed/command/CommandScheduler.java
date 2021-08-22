@@ -58,6 +58,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
@@ -67,6 +68,7 @@ import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ConsoleResultReporter;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -75,6 +77,7 @@ import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -681,6 +684,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     config.getLogOutput().closeLog();
                     LogRegistry.getLogRegistry().unregisterLogger();
                 }
+                if (getFeatureServer() != null) {
+                    getFeatureServer().unregisterInvocation(config);
+                }
                 mCmd.commandFinished(elapsedTime);
                 logInvocationEndedEvent(
                         mCmd.getCommandTracker().getId(), elapsedTime, mInvocationContext);
@@ -753,7 +759,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocations.
          */
         public void stopInvocation(String message, ErrorIdentifier errorId) {
-            getInvocation().notifyInvocationStopped(message);
+            getInvocation().notifyInvocationStopped(message, errorId);
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                     // Kill all running processes on device.
@@ -1001,14 +1007,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return GlobalConfiguration.getDeviceManagerInstance();
     }
 
-     /**
-      * Factory method for getting a reference to the {@link IHostMonitor}
-      *
-      * @return the {@link IHostMonitor} to use
-      */
-     List<IHostMonitor> getHostMonitor() {
-         return GlobalConfiguration.getHostMonitorInstances();
-     }
+    protected IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /**
+     * Factory method for getting a reference to the {@link IHostMonitor}
+     *
+     * @return the {@link IHostMonitor} to use
+     */
+    List<IHostMonitor> getHostMonitor() {
+        return GlobalConfiguration.getHostMonitorInstances();
+    }
 
     /**
      * Factory method for getting a reference to the {@link IConfigurationFactory}
@@ -1017,6 +1027,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     protected IConfigurationFactory getConfigFactory() {
         return ConfigurationFactory.getInstance();
+    }
+
+    protected TradefedFeatureServer getFeatureServer() {
+        return GlobalConfiguration.getInstance().getFeatureServer();
     }
 
     /**
@@ -1078,6 +1092,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // potentially create more invocations.
             manager.terminateDeviceRecovery();
             manager.terminateDeviceMonitor();
+            if (getFeatureServer() != null) {
+                try {
+                    getFeatureServer().shutdown();
+                } catch (InterruptedException e) {
+                    CLog.e(e);
+                }
+            }
             CLog.i("Waiting for invocation threads to complete");
             waitForAllInvocationThreads();
             closeRemoteClient();
@@ -1356,6 +1377,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private void setDelegateLevelReporting(IConfiguration config) {
         List<ITestInvocationListener> delegateReporters = new ArrayList<>();
         // For debugging in the console, add a printer
+        delegateReporters.add(new ConsoleResultReporter());
         delegateReporters.add(new SuiteResultReporter());
         try {
             Class<?> objectClass =
@@ -1452,7 +1474,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
         } catch (IOException e) {
-            throw new ConfigurationException("Failed to read file " + cmdFile.getAbsolutePath(), e);
+            throw new ConfigurationException(
+                    "Failed to read file " + cmdFile.getAbsolutePath(),
+                    e,
+                    InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
         }
     }
 
@@ -1735,6 +1760,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // Name invocation with first device serial
         final String invocationName = String.format("Invocation-%s",
                 context.getSerials().get(0));
+        if (getFeatureServer() != null) {
+            getFeatureServer().registerInvocation(cmd.getConfiguration());
+        }
         InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
         // Link context and command

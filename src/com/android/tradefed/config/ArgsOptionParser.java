@@ -25,8 +25,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -143,6 +145,13 @@ public class ArgsOptionParser extends OptionSetter {
 
     /** the amount to indent an option field's description when displaying help */
     private static final int OPTION_DESCRIPTION_INDENT = 25;
+
+    private Set<String> inopOptions = new HashSet<>();
+
+    /** Returns the set of options that did not change any default values. */
+    public Set<String> getInopOptions() {
+        return inopOptions;
+    }
 
     /**
      * Creates a {@link ArgsOptionParser} for a collection of objects.
@@ -328,17 +337,42 @@ public class ArgsOptionParser extends OptionSetter {
             name = name.substring(0, equalsIndex);
         }
 
-        if (value == null) {
-            if (isBooleanOption(name)) {
-                int idx = name.indexOf(NAMESPACE_SEPARATOR);
-                // Detect a device tag in front of the boolean option.
-                Matcher m = BOOL_FALSE_DEVICE_PATTERN.matcher(name);
-                if (m.find()) {
-                    value = "false";
-                } else {
-                    value = name.startsWith(BOOL_FALSE_PREFIX, idx + 1) ? "false" : "true";
+        if (isBooleanOption(name)) {
+            int idx = name.indexOf(NAMESPACE_SEPARATOR);
+            // Detect a device tag in front of the boolean option.
+            Matcher m = BOOL_FALSE_DEVICE_PATTERN.matcher(name);
+            if (m.find()) {
+                value = "false";
+            } else {
+                // default boolean flag to true and overwrite it if value is provided by user
+                if (value == null) value = "true";
+                String nextArg = args.hasNext() ? args.next() : null;
+                if (nextArg != null) {
+                    if (nextArg.equalsIgnoreCase("true") || nextArg.equalsIgnoreCase("false")) {
+                        value = nextArg.toLowerCase();
+                    } else {
+                        // if the next arg is not "true" or "false", move the pointer back
+                        args.previous();
+                    }
                 }
-            } else if (isMapOption(name)) {
+
+                if (name.startsWith(BOOL_FALSE_PREFIX, idx + 1)) {
+                    if (value.equals("false")) {
+                        // if user entered "--no-boolean-flag false"
+                        throw new ConfigurationException(
+                                String.format(
+                                        "Can not use 'no-' prefix on a boolean flag with a 'false'"
+                                                + " value. Please use '--%1$s' instead of '--%2$s"
+                                                + " false'",
+                                        name.substring(BOOL_FALSE_PREFIX.length() + idx + 1), name),
+                                InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                    }
+                    value = "false";
+                }
+            }
+        }
+        if (value == null) {
+            if (isMapOption(name)) {
                 // Support --option key=value and --option key value format
                 String tmp = grabNextValue(args, name, "for its key");
                 // only match = to escape use "\="
@@ -360,9 +394,11 @@ public class ArgsOptionParser extends OptionSetter {
                 value = grabNextValue(args, name);
             }
         }
-
         value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-        setOptionValue(name, key, value);
+        List<FieldDef> modifiedField = setOptionValue(name, key, value);
+        if (modifiedField.isEmpty()) {
+            inopOptions.add(name);
+        }
     }
 
     // Given boolean options a and b, and non-boolean option f, we want to allow:
@@ -389,7 +425,10 @@ public class ArgsOptionParser extends OptionSetter {
                 }
             }
             value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-            setOptionValue(name, value);
+            List<FieldDef> modifiedField = setOptionValue(name, value);
+            if (modifiedField.isEmpty()) {
+                inopOptions.add(name);
+            }
         }
     }
 

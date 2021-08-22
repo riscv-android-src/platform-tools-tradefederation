@@ -17,6 +17,8 @@ package com.android.tradefed.targetprep.adb;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -30,12 +32,14 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
@@ -44,20 +48,19 @@ import java.io.File;
 public class AdbStopServerPreparerTest {
 
     private AdbStopServerPreparer mPreparer;
-    private IRunUtil mMockRunUtil;
-    private IDeviceManager mMockManager;
+    @Mock IRunUtil mMockRunUtil;
+    @Mock IDeviceManager mMockManager;
 
     private TestInformation mTestInfo;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private IBuildInfo mMockBuild;
     private File mFakeAdbFile;
     private String mEnvironment;
 
     @Before
     public void setUp() throws Exception {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mMockManager = EasyMock.createMock(IDeviceManager.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
+
         mEnvironment = null;
         mPreparer =
                 new AdbStopServerPreparer() {
@@ -86,7 +89,7 @@ public class AdbStopServerPreparerTest {
         mMockBuild.setFile("adb", mFakeAdbFile, "v1");
 
         mMockRunUtil.sleep(2000);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
         InvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuild);
@@ -101,49 +104,42 @@ public class AdbStopServerPreparerTest {
     /** Test that during setup the adb server is stopped then restart with a new found version. */
     @Test
     public void testSetup_tearDown() throws Exception {
-        mMockManager.stopAdbBridge();
+
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         // setUp
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
-                .andReturn(result);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.contains("adb"),
-                                EasyMock.eq("start-server")))
-                .andReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("kill-server")))
+                .thenReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.contains("adb"), Mockito.eq("start-server")))
+                .thenReturn(result);
         // tear down
         mockTearDown();
-        EasyMock.replay(mMockRunUtil, mMockManager, mMockDevice);
+
         mPreparer.setUp(mTestInfo);
         mPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+
+        verify(mMockManager).stopAdbBridge();
     }
 
     /** Test when restarting the adb server fails. */
     @Test
     public void testSetup_fail_tearDown() throws Exception {
-        mMockManager.stopAdbBridge();
+
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         // setUp
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
-                .andReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("kill-server")))
+                .thenReturn(result);
 
         CommandResult failedResult = new CommandResult(CommandStatus.FAILED);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.contains("adb"),
-                                EasyMock.eq("start-server")))
-                .andReturn(failedResult);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.contains("adb"), Mockito.eq("start-server")))
+                .thenReturn(failedResult);
 
         // tear down
         mockTearDown();
-        EasyMock.replay(mMockRunUtil, mMockManager, mMockDevice);
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
@@ -151,26 +147,23 @@ public class AdbStopServerPreparerTest {
             // Expected
         }
         mPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+
+        verify(mMockManager).stopAdbBridge();
     }
 
     /** Test that we fail the preparation when there is no adb to test. */
     @Test
     public void testNoAdb() throws Exception {
-        mMockManager.stopAdbBridge();
+
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         // setUp
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
-                .andReturn(result);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("adb"),
-                                EasyMock.eq("start-server")))
-                .andReturn(result);
-        EasyMock.replay(mMockRunUtil, mMockManager, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("kill-server")))
+                .thenReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("start-server")))
+                .thenReturn(result);
+
         try {
             InvocationContext context = new InvocationContext();
             context.addAllocatedDevice("device", mMockDevice);
@@ -184,7 +177,8 @@ public class AdbStopServerPreparerTest {
                     expected.getMessage()
                             .contains("Could not find a new version of adb to tests."));
         }
-        EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+
+        verify(mMockManager).stopAdbBridge();
     }
 
     /** Test getting the adb binary from the local path. */
@@ -196,27 +190,22 @@ public class AdbStopServerPreparerTest {
             File fakeAdb = new File(tmpDir, "bin/adb");
             fakeAdb.createNewFile();
             mEnvironment = tmpDir.getAbsolutePath();
-            mMockManager.stopAdbBridge();
+
             CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             // setUp
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq("adb"),
-                                    EasyMock.eq("kill-server")))
-                    .andReturn(result);
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.contains("adb"),
-                                    EasyMock.eq("start-server")))
-                    .andReturn(result);
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("kill-server")))
+                    .thenReturn(result);
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(), Mockito.contains("adb"), Mockito.eq("start-server")))
+                    .thenReturn(result);
             // tear down
             mockTearDown();
-            EasyMock.replay(mMockRunUtil, mMockManager, mMockDevice);
+
             mPreparer.setUp(mTestInfo);
             mPreparer.tearDown(mTestInfo, null);
-            EasyMock.verify(mMockRunUtil, mMockManager, mMockDevice);
+
+            verify(mMockManager).stopAdbBridge();
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
@@ -224,16 +213,12 @@ public class AdbStopServerPreparerTest {
 
     private void mockTearDown() {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("kill-server")))
-                .andReturn(result);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("adb"),
-                                EasyMock.eq("start-server")))
-                .andReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("kill-server")))
+                .thenReturn(result);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(), Mockito.eq("adb"), Mockito.eq("start-server")))
+                .thenReturn(result);
         mMockManager.restartAdbBridge();
     }
 }

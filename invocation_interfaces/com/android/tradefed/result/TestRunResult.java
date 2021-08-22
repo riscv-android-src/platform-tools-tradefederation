@@ -113,6 +113,11 @@ public class TestRunResult {
         return getTestsInState(Arrays.asList(TestStatus.FAILURE));
     }
 
+    /** Gets the set of passed tests. */
+    public Set<TestDescription> getPassedTests() {
+        return getTestsInState(Arrays.asList(TestStatus.PASSED));
+    }
+
     /** Gets the set of tests in given statuses. */
     private Set<TestDescription> getTestsInState(List<TestStatus> statuses) {
         Set<TestDescription> tests = new LinkedHashSet<>();

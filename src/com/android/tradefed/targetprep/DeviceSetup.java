@@ -485,6 +485,10 @@ public class DeviceSetup extends BaseTargetPreparer {
             CLog.d("boot failure: skipping teardown");
             return;
         }
+        if (e instanceof DeviceNotAvailableException) {
+            CLog.d("device not available: skipping teardown");
+            return;
+        }
         if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
             CLog.d("device offline: skipping teardown");
             return;
@@ -825,7 +829,11 @@ public class DeviceSetup extends BaseTargetPreparer {
                 device.executeShellCommand("input keyevent 82");
                 // send HOME press in case keyguard was already dismissed, so we bring device back
                 // to home screen
-                device.executeShellCommand("input keyevent 3");
+                // No need for this on Wear OS, since that causes the launcher to show
+                // instead of the home screen
+                if (!device.hasFeature("android.hardware.type.watch")) {
+                    device.executeShellCommand("input keyevent 3");
+                }
                 break;
             case OFF:
                 CLog.d("Setting screen always on to false");
@@ -1098,6 +1106,10 @@ public class DeviceSetup extends BaseTargetPreparer {
     /** Exposed for unit testing */
     protected void setForceSkipSystemProps(boolean force) {
         mForceSkipSystemProps = force;
+    }
+
+    public boolean isForceSkipSystemProps() {
+        return mForceSkipSystemProps;
     }
 
     /**

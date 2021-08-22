@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
@@ -35,15 +37,18 @@ import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.util.Set;
 
 /** Unit tests for {@link PushFilePreparer} */
@@ -53,15 +58,16 @@ public class PushFilePreparerTest {
     private static final String HOST_TESTCASES = "host/testcases";
 
     private PushFilePreparer mPreparer = null;
-    private ITestDevice mMockDevice = null;
+    @Mock ITestDevice mMockDevice = null;
     private OptionSetter mOptionSetter = null;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
         mPreparer = new PushFilePreparer();
         mOptionSetter = new OptionSetter(mPreparer);
         IInvocationContext context = new InvocationContext();
@@ -72,16 +78,15 @@ public class PushFilePreparerTest {
     /** When there's nothing to be done, expect no exception to be thrown */
     @Test
     public void testNoop() throws Exception {
-        EasyMock.replay(mMockDevice);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testLocalNoExist() throws Exception {
         mOptionSetter.setOptionValue("push-file", "/noexist", "/data/");
         mOptionSetter.setOptionValue("post-push", "ls /");
-        EasyMock.replay(mMockDevice);
+
         try {
             mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
             // Should throw TargetSetupError and _not_ run any post-push command
@@ -90,7 +95,6 @@ public class PushFilePreparerTest {
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
@@ -98,10 +102,9 @@ public class PushFilePreparerTest {
         mOptionSetter.setOptionValue("push-file", "/bin/sh", "/noexist/");
         mOptionSetter.setOptionValue("post-push", "ls /");
         // expect a pushFile() call and return false (failed)
-        EasyMock.expect(
-                mMockDevice.pushFile((File)EasyMock.anyObject(), EasyMock.eq("/noexist/")))
-                .andReturn(Boolean.FALSE);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.pushFile((File) Mockito.any(), Mockito.eq("/noexist/")))
+                .thenReturn(Boolean.FALSE);
+
         try {
             mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
             // Should throw TargetSetupError and _not_ run any post-push command
@@ -110,7 +113,6 @@ public class PushFilePreparerTest {
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -127,14 +129,11 @@ public class PushFilePreparerTest {
             info.setFile("perf_test", testFile, "v1");
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/");
             // expect a pushFile() to be done with the appended file name.
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(testFile), EasyMock.eq("/data/local/tmp/")))
-                    .andReturn(Boolean.TRUE);
+            when(mMockDevice.pushFile(Mockito.eq(testFile), Mockito.eq("/data/local/tmp/")))
+                    .thenReturn(Boolean.TRUE);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -152,20 +151,15 @@ public class PushFilePreparerTest {
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/perf_test1");
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/perf_test2");
             // expect a pushFile() to be done with the appended file name.
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(testFile),
-                                    EasyMock.eq("/data/local/tmp/perf_test1")))
-                    .andReturn(Boolean.TRUE);
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(testFile),
-                                    EasyMock.eq("/data/local/tmp/perf_test2")))
-                    .andReturn(Boolean.TRUE);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(testFile), Mockito.eq("/data/local/tmp/perf_test1")))
+                    .thenReturn(Boolean.TRUE);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(testFile), Mockito.eq("/data/local/tmp/perf_test2")))
+                    .thenReturn(Boolean.TRUE);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -181,19 +175,15 @@ public class PushFilePreparerTest {
             testFile.mkdir();
             info.setFile("perf_test", testFile, "v1");
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/")).andReturn(true);
-            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/")).andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/")).thenReturn(true);
+            when(mMockDevice.isDirectory("/data/local/tmp/")).thenReturn(true);
             // expect a pushFile() to be done with the appended file name.
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(testFile),
-                                    EasyMock.eq("/data/local/tmp/"),
-                                    EasyMock.anyObject()))
-                    .andReturn(Boolean.TRUE);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(testFile), Mockito.eq("/data/local/tmp/"), Mockito.any()))
+                    .thenReturn(Boolean.TRUE);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -209,9 +199,9 @@ public class PushFilePreparerTest {
             testFile.mkdir();
             info.setFile("perf_test", testFile, "v1");
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/file");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/file")).andReturn(true);
-            EasyMock.expect(mMockDevice.isDirectory("/data/local/tmp/file")).andReturn(false);
-            EasyMock.replay(mMockDevice);
+            when(mMockDevice.doesFileExist("/data/local/tmp/file")).thenReturn(true);
+            when(mMockDevice.isDirectory("/data/local/tmp/file")).thenReturn(false);
+
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
             try {
                 mPreparer.setUp(mTestInfo);
@@ -219,7 +209,6 @@ public class PushFilePreparerTest {
             } catch (TargetSetupError expected) {
                 // Expected
             }
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -242,17 +231,14 @@ public class PushFilePreparerTest {
             info.setFile("perf_test2", testFile2, "v1");
             mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/perf_test");
             mOptionSetter.setOptionValue("push-file", "perf_test2", "/data/local/tmp/perf_test");
-            EasyMock.expect(mMockDevice.isDirectory(EasyMock.anyObject())).andStubReturn(false);
+            when(mMockDevice.isDirectory(Mockito.any())).thenReturn(false);
             // the latest config win.
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(testFile2),
-                                    EasyMock.eq("/data/local/tmp/perf_test")))
-                    .andReturn(Boolean.TRUE);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(testFile2), Mockito.eq("/data/local/tmp/perf_test")))
+                    .thenReturn(Boolean.TRUE);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -276,17 +262,14 @@ public class PushFilePreparerTest {
 
             mOptionSetter.setOptionValue("push-file", "perf_test2", "/data/local/tmp/perf_test");
             mOptionSetter.setOptionValue("push", "perf_test->/data/local/tmp/perf_test");
-            EasyMock.expect(mMockDevice.isDirectory(EasyMock.anyObject())).andStubReturn(false);
+            when(mMockDevice.isDirectory(Mockito.any())).thenReturn(false);
             // the latest config win.
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(testFile2),
-                                    EasyMock.eq("/data/local/tmp/perf_test")))
-                    .andReturn(Boolean.TRUE);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(testFile2), Mockito.eq("/data/local/tmp/perf_test")))
+                    .thenReturn(Boolean.TRUE);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -299,16 +282,14 @@ public class PushFilePreparerTest {
         mOptionSetter.setOptionValue("abort-on-push-failure", "false");
 
         // expect a pushFile() call and return false (failed)
-        EasyMock.expect(
-                mMockDevice.pushFile((File)EasyMock.anyObject(), EasyMock.eq("/noexist/")))
-                .andReturn(Boolean.FALSE);
+        when(mMockDevice.pushFile((File) Mockito.any(), Mockito.eq("/noexist/")))
+                .thenReturn(Boolean.FALSE);
         // Because we're only warning, the post-push command should be run despite the push failures
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("ls /"))).andReturn("");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.executeShellCommand(Mockito.eq("ls /"))).thenReturn("");
+
         mTestInfo.getContext().addDeviceBuildInfo("device", new BuildInfo());
         // Don't expect any exceptions to be thrown
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -317,13 +298,13 @@ public class PushFilePreparerTest {
      */
     @Test
     public void testResolveRelativeFilePath_noDeviceBuildInfo() {
-        IBuildInfo buildInfo = EasyMock.createStrictMock(IBuildInfo.class);
+        IBuildInfo buildInfo = mock(IBuildInfo.class);
         String fileName = "source_file";
-        EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-        EasyMock.replay(buildInfo);
+        when(buildInfo.getFile(fileName)).thenReturn(null);
 
         assertNull(mPreparer.resolveRelativeFilePath(buildInfo, fileName));
-        EasyMock.verify(buildInfo);
+        InOrder inOrder = Mockito.inOrder(buildInfo);
+        inOrder.verify(buildInfo).getFile(fileName);
     }
 
     /**
@@ -332,7 +313,7 @@ public class PushFilePreparerTest {
      */
     @Test
     public void testResolveRelativeFilePath_withDeviceBuildInfo() throws Exception {
-        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo buildInfo = mock(IDeviceBuildInfo.class);
         String fileName = "source_file";
 
         File testsDir = null;
@@ -343,15 +324,17 @@ public class PushFilePreparerTest {
             File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
 
             fileName = sourceFile.getName();
-            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-            EasyMock.replay(buildInfo);
+            when(buildInfo.getFile(fileName)).thenReturn(null);
+            when(buildInfo.getTestsDir()).thenReturn(testsDir);
+            when(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
 
             assertEquals(
                     sourceFile.getAbsolutePath(),
                     mPreparer.resolveRelativeFilePath(buildInfo, fileName).getAbsolutePath());
-            EasyMock.verify(buildInfo);
+            InOrder inOrder = Mockito.inOrder(buildInfo);
+            inOrder.verify(buildInfo).getFile(fileName);
+            inOrder.verify(buildInfo).getTestsDir();
+            inOrder.verify(buildInfo).getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -363,7 +346,7 @@ public class PushFilePreparerTest {
      */
     @Test
     public void testResolveRelativeFilePath_withDeviceBuildInfo_remoteZip() throws Exception {
-        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo buildInfo = mock(IDeviceBuildInfo.class);
         String fileName = "source_file";
 
         File testsDir = null;
@@ -375,17 +358,19 @@ public class PushFilePreparerTest {
 
             // Change the file name so direct file search will return null.
             fileName = sourceFile.getName() + "-2";
-            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-            EasyMock.expect(buildInfo.stageRemoteFile(EasyMock.eq(fileName), EasyMock.eq(testsDir)))
-                    .andReturn(sourceFile);
-            EasyMock.replay(buildInfo);
+            when(buildInfo.getFile(fileName)).thenReturn(null);
+            when(buildInfo.getTestsDir()).thenReturn(testsDir);
+            when(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(buildInfo.stageRemoteFile(Mockito.eq(fileName), Mockito.eq(testsDir)))
+                    .thenReturn(sourceFile);
 
             assertEquals(
                     sourceFile.getAbsolutePath(),
                     mPreparer.resolveRelativeFilePath(buildInfo, fileName).getAbsolutePath());
-            EasyMock.verify(buildInfo);
+            InOrder inOrder = Mockito.inOrder(buildInfo);
+            inOrder.verify(buildInfo).getFile(fileName);
+            inOrder.verify(buildInfo).getTestsDir();
+            inOrder.verify(buildInfo).getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -406,22 +391,19 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(debuggerFile);
 
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
-            EasyMock.expect(
-                            mMockDevice.executeShellCommand(
-                                    "mkdir -p \"/data/local/tmp/debugger\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
-                                    EasyMock.eq("/data/local/tmp/debugger"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/debugger")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/debugger\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/debugger")),
+                            Mockito.eq("/data/local/tmp/debugger"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -442,23 +424,19 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(debuggerFile);
 
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/folder")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/folder\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/debugger/x86/folder")),
-                                    EasyMock.eq("/data/local/tmp/folder"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/folder")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/folder\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/debugger/x86/folder")),
+                            Mockito.eq("/data/local/tmp/folder"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -478,22 +456,19 @@ public class PushFilePreparerTest {
             File debuggerFile = new File(tmpFolder, "target/testcases/debugger/x86/debugger32");
             FileUtil.mkdirsRWX(debuggerFile);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
-            EasyMock.expect(
-                            mMockDevice.executeShellCommand(
-                                    "mkdir -p \"/data/local/tmp/debugger\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
-                                    EasyMock.eq("/data/local/tmp/debugger"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/debugger")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/debugger\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/debugger")),
+                            Mockito.eq("/data/local/tmp/debugger"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -519,23 +494,20 @@ public class PushFilePreparerTest {
             File otherLib = new File(tmpFolder, "target/testcases/random/x86_64/lib64");
             FileUtil.mkdirsRWX(otherLib);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/debugger/x86_64/lib64")),
-                                    EasyMock.eq("/data/local/tmp/lib"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/lib")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(
+                                    new File(tmpFolder, "target/testcases/debugger/x86_64/lib64")),
+                            Mockito.eq("/data/local/tmp/lib"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86_64"));
@@ -563,18 +535,13 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(otherLib.getParentFile());
             otherLib.createNewFile();
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/aaaaa/x86_64/file")),
-                                    EasyMock.eq("/data/local/tmp/file")))
-                    .andReturn(true);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/aaaaa/x86_64/file")),
+                            Mockito.eq("/data/local/tmp/file")))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
@@ -597,16 +564,13 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(x86File.getParentFile());
             x86File.createNewFile();
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(
-                                            new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
-                                    EasyMock.eq("/data/local/tmp/file")))
-                    .andReturn(true);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
+                            Mockito.eq("/data/local/tmp/file")))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
@@ -629,18 +593,13 @@ public class PushFilePreparerTest {
             FileUtil.mkdirsRWX(x86File.getParentFile());
             x86File.createNewFile();
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/aaaaa/x86_64/file")),
-                                    EasyMock.eq("/data/local/tmp/file")))
-                    .andReturn(true);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/aaaaa/x86_64/file")),
+                            Mockito.eq("/data/local/tmp/file")))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
@@ -662,15 +621,15 @@ public class PushFilePreparerTest {
                     @Override
                     public File stageRemoteFile(String fileName, File workingDir) {
                         try {
-                            File file_64 =
+                            File file64 =
                                     new File(tmpFolder, "target/testcases/aaaaa/x86_64/file");
-                            FileUtil.mkdirsRWX(file_64.getParentFile());
-                            file_64.createNewFile();
-                            File file_32 = new File(tmpFolder, "target/testcases/aaaaa/x86/file");
-                            FileUtil.mkdirsRWX(file_32.getParentFile());
-                            file_32.createNewFile();
+                            FileUtil.mkdirsRWX(file64.getParentFile());
+                            file64.createNewFile();
+                            File file32 = new File(tmpFolder, "target/testcases/aaaaa/x86/file");
+                            FileUtil.mkdirsRWX(file32.getParentFile());
+                            file32.createNewFile();
                             // Return the file with mismatched ABI.
-                            return file_64;
+                            return file64;
                         } catch (IOException e) {
                             return null;
                         }
@@ -678,16 +637,13 @@ public class PushFilePreparerTest {
                 };
         try {
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(
-                            mMockDevice.pushFile(
-                                    EasyMock.eq(
-                                            new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
-                                    EasyMock.eq("/data/local/tmp/file")))
-                    .andReturn(true);
+            when(mMockDevice.pushFile(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
+                            Mockito.eq("/data/local/tmp/file")))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
         } finally {
             FileUtil.recursiveDelete(tmpFolder);
         }
@@ -707,25 +663,21 @@ public class PushFilePreparerTest {
             File libX86File = new File(tmpFolder, "target/testcases/debugger/x86_64/minilib64");
             FileUtil.mkdirsRWX(libX86File);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
+            when(mMockDevice.doesFileExist("/data/local/tmp/lib")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
             // Use the only dir matching the file, regardless of the module if the module doesn't
             // contain the file.
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/aaaaa/x86_64/lib64")),
-                                    EasyMock.eq("/data/local/tmp/lib"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/aaaaa/x86_64/lib64")),
+                            Mockito.eq("/data/local/tmp/lib"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86_64"));
@@ -750,21 +702,19 @@ public class PushFilePreparerTest {
             File otherLib = new File(tmpFolder, "target/testcases/debugger/lib32");
             FileUtil.mkdirsRWX(otherLib);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(tmpFolder, "target/testcases/debugger/lib64")),
-                                    EasyMock.eq("/data/local/tmp/lib"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/lib")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/debugger/lib64")),
+                            Mockito.eq("/data/local/tmp/lib"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -793,22 +743,19 @@ public class PushFilePreparerTest {
             otherLib.createNewFile();
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
 
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/debugger")).andReturn(false);
-            EasyMock.expect(
-                            mMockDevice.executeShellCommand(
-                                    "mkdir -p \"/data/local/tmp/debugger\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(new File(tmpFolder, "target/testcases/debugger")),
-                                    EasyMock.eq("/data/local/tmp/debugger"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/debugger")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/debugger\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/debugger")),
+                            Mockito.eq("/data/local/tmp/debugger"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -835,20 +782,19 @@ public class PushFilePreparerTest {
             File libX86File = new File(tmpFolder, "DATA/lib64");
             FileUtil.mkdirsRWX(libX86File);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(new File(tmpFolder, "lib64")),
-                                    EasyMock.eq("/data/local/tmp/lib"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/lib")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "lib64")),
+                            Mockito.eq("/data/local/tmp/lib"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86_64"));
@@ -902,28 +848,24 @@ public class PushFilePreparerTest {
             otherModule2.createNewFile();
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
 
-            EasyMock.expect(
-                            mMockDevice.doesFileExist(
-                                    "/data/local/tmp/propertyinfoserializer_tests"))
-                    .andReturn(false);
-            EasyMock.expect(
-                            mMockDevice.executeShellCommand(
-                                    "mkdir -p \"/data/local/tmp/propertyinfoserializer_tests\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(
-                                                    tmpFolder,
-                                                    "target/testcases/propertyinfoserializer_tests")),
-                                    EasyMock.eq("/data/local/tmp/propertyinfoserializer_tests"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/propertyinfoserializer_tests"))
+                    .thenReturn(false);
+            when(mMockDevice.executeShellCommand(
+                            "mkdir -p \"/data/local/tmp/propertyinfoserializer_tests\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(
+                                    new File(
+                                            tmpFolder,
+                                            "target/testcases/propertyinfoserializer_tests")),
+                            Mockito.eq("/data/local/tmp/propertyinfoserializer_tests"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("x86"));
@@ -947,21 +889,19 @@ public class PushFilePreparerTest {
                             "target/testcases/bionic/lib64/bionic-loader-test-libs/dt_runpath_y/lib64/arm64/");
             FileUtil.mkdirsRWX(libX86File);
             info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
-            EasyMock.expect(mMockDevice.doesFileExist("/data/local/tmp/lib")).andReturn(false);
-            EasyMock.expect(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
-                    .andReturn("");
-            Capture<Set<String>> capture = new Capture<>();
-            EasyMock.expect(
-                            mMockDevice.pushDir(
-                                    EasyMock.eq(
-                                            new File(tmpFolder, "target/testcases/bionic/lib64")),
-                                    EasyMock.eq("/data/local/tmp/lib"),
-                                    EasyMock.capture(capture)))
-                    .andReturn(true);
+            when(mMockDevice.doesFileExist("/data/local/tmp/lib")).thenReturn(false);
+            when(mMockDevice.executeShellCommand("mkdir -p \"/data/local/tmp/lib\""))
+                    .thenReturn("");
+            ArgumentCaptor<Set<String>> capture = ArgumentCaptor.forClass(Set.class);
+            when(mMockDevice.pushDir(
+                            Mockito.eq(new File(tmpFolder, "target/testcases/bionic/lib64")),
+                            Mockito.eq("/data/local/tmp/lib"),
+                            capture.capture()))
+                    .thenReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);
-            EasyMock.replay(mMockDevice);
+
             mPreparer.setUp(mTestInfo);
-            EasyMock.verify(mMockDevice);
+
             // The x86 folder was not filtered
             Set<String> capValue = capture.getValue();
             assertFalse(capValue.contains("arm64"));
@@ -976,4 +916,3 @@ public class PushFilePreparerTest {
         return moduleContext;
     }
 }
-

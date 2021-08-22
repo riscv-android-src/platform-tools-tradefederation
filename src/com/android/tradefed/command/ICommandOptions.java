@@ -20,6 +20,7 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -223,6 +224,9 @@ public interface ICommandOptions {
     /** Whether or not to report passed test cases. */
     public boolean reportPassedTests();
 
+    /** Whether or not to filters previous passed test cases from previous attempt. */
+    public boolean filterPreviousPassedTests();
+
     /** whether or not to report the logs until invocationComplete. */
     public boolean reportInvocationComplete();
 
@@ -234,4 +238,10 @@ public interface ICommandOptions {
      * false.
      */
     public long getMaxLoopCount();
+
+    /** List of tags used for reporting related to the invocation. */
+    public List<String> reportingTags();
+
+    /** Whether or not to disable pre-invocaiton setup and post-invocation teardown. */
+    public boolean shouldDisableInvocationSetupAndTeardown();
 }

@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.suite.module;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
@@ -27,35 +26,35 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
-import org.easymock.EasyMock;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link ArchModuleController}. */
 @RunWith(JUnit4.class)
 public class ArchModuleControllerTest {
     private ArchModuleController mController;
     private IInvocationContext mContext;
-    private ITestDevice mMockDevice;
-    private IDevice mMockIDevice;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mController = new ArchModuleController();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
         mContext = new InvocationContext();
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, "module1");
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
     }
 
     @Test
     public void testMatchesArch() throws DeviceNotAvailableException, ConfigurationException {
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "arm64-v8a");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice).times(2);
-        EasyMock.replay(mMockDevice);
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("arch", "arm64");
         setter.setOptionValue("arch", "x86_64");
@@ -65,8 +64,7 @@ public class ArchModuleControllerTest {
     @Test
     public void testMismatchesArch() throws DeviceNotAvailableException, ConfigurationException {
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "arm64-v8a");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice).times(2);
-        EasyMock.replay(mMockDevice);
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("arch", "arm");
         setter.setOptionValue("arch", "x86");

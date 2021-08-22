@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -23,19 +27,20 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit Tests for {@link DisableSELinuxTargetPreparerTest}. */
 @RunWith(JUnit4.class)
 public class DisableSELinuxTargetPreparerTest {
 
     private DisableSELinuxTargetPreparer mDisableSELinuxTargetPreparer;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
     private static final String PERMISSIVE = "Permissive";
     private static final String ENFORCED = "Enforced";
@@ -44,9 +49,10 @@ public class DisableSELinuxTargetPreparerTest {
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mDisableSELinuxTargetPreparer = new DisableSELinuxTargetPreparer();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -58,12 +64,11 @@ public class DisableSELinuxTargetPreparerTest {
         CommandResult result = new CommandResult();
         result.setStdout(PERMISSIVE);
         result.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(GETENFORCE)).thenReturn(result);
 
         mDisableSELinuxTargetPreparer.setUp(mTestInfo);
         mDisableSELinuxTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).executeShellV2Command(GETENFORCE);
     }
 
     @Test
@@ -71,19 +76,17 @@ public class DisableSELinuxTargetPreparerTest {
         CommandResult result = new CommandResult();
         result.setStdout(ENFORCED);
         result.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.executeShellV2Command(SETENFORCE + "0"))
-                .andReturn(result)
-                .once();
-        EasyMock.expect(mMockDevice.executeShellV2Command(SETENFORCE + "1"))
-                .andReturn(result)
-                .once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(GETENFORCE)).thenReturn(result);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
+        when(mMockDevice.executeShellV2Command(SETENFORCE + "0")).thenReturn(result);
+        when(mMockDevice.executeShellV2Command(SETENFORCE + "1")).thenReturn(result);
 
         mDisableSELinuxTargetPreparer.setUp(mTestInfo);
         mDisableSELinuxTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).executeShellV2Command(GETENFORCE);
+        verify(mMockDevice, times(1)).isAdbRoot();
+        verify(mMockDevice, times(1)).executeShellV2Command(SETENFORCE + "0");
+        verify(mMockDevice, times(1)).executeShellV2Command(SETENFORCE + "1");
     }
 
     @Test
@@ -91,37 +94,39 @@ public class DisableSELinuxTargetPreparerTest {
         CommandResult result = new CommandResult();
         result.setStdout(ENFORCED);
         result.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).times(2);
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).times(2);
+        when(mMockDevice.executeShellV2Command(GETENFORCE)).thenReturn(result);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(true);
 
-        EasyMock.expect(mMockDevice.executeShellV2Command(SETENFORCE + "0"))
-                .andReturn(result)
-                .once();
-        EasyMock.expect(mMockDevice.executeShellV2Command(SETENFORCE + "1"))
-                .andReturn(result)
-                .once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(SETENFORCE + "0")).thenReturn(result);
+        when(mMockDevice.executeShellV2Command(SETENFORCE + "1")).thenReturn(result);
 
         mDisableSELinuxTargetPreparer.setUp(mTestInfo);
         mDisableSELinuxTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).executeShellV2Command(GETENFORCE);
+        verify(mMockDevice, times(1)).isAdbRoot();
+        verify(mMockDevice, times(2)).enableAdbRoot();
+        verify(mMockDevice, times(2)).disableAdbRoot();
+        verify(mMockDevice, times(1)).executeShellV2Command(SETENFORCE + "0");
+        verify(mMockDevice, times(1)).executeShellV2Command(SETENFORCE + "1");
     }
 
     @Test(expected = TargetSetupError.class)
     public void testSetUp_rootFail() throws Exception {
         CommandResult result = new CommandResult();
         result.setStdout(ENFORCED);
-        EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
+        when(mMockDevice.executeShellV2Command(GETENFORCE)).thenReturn(result);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
         try {
-            EasyMock.replay(mMockDevice, mMockBuildInfo);
             mDisableSELinuxTargetPreparer.setUp(mTestInfo);
         } finally {
-            EasyMock.verify(mMockDevice, mMockBuildInfo);
+            verify(mMockDevice, times(1)).executeShellV2Command(GETENFORCE);
+            verify(mMockDevice, times(1)).isAdbRoot();
+            verify(mMockDevice, times(1)).enableAdbRoot();
+            verify(mMockDevice, times(1)).getDeviceDescriptor();
         }
     }
 
@@ -130,18 +135,18 @@ public class DisableSELinuxTargetPreparerTest {
         CommandResult result = new CommandResult();
         result.setStdout(ENFORCED);
         result.setStatus(CommandStatus.FAILED);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
-        EasyMock.expect(mMockDevice.executeShellV2Command(GETENFORCE)).andReturn(result).once();
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.executeShellV2Command(SETENFORCE + "0"))
-                .andReturn(result)
-                .once();
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.executeShellV2Command(GETENFORCE)).thenReturn(result);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.executeShellV2Command(SETENFORCE + "0")).thenReturn(result);
         try {
-            EasyMock.replay(mMockDevice, mMockBuildInfo);
             mDisableSELinuxTargetPreparer.setUp(mTestInfo);
         } finally {
-            EasyMock.verify(mMockDevice, mMockBuildInfo);
+            verify(mMockDevice, times(1)).executeShellV2Command(GETENFORCE);
+            verify(mMockDevice, times(1)).isAdbRoot();
+            verify(mMockDevice, times(1)).enableAdbRoot();
+            verify(mMockDevice, times(1)).executeShellV2Command(SETENFORCE + "0");
         }
     }
 }

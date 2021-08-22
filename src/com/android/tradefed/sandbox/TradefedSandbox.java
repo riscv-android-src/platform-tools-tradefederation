@@ -29,6 +29,7 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -42,6 +43,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -237,12 +239,23 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        mRunUtil.unsetEnvVariable(RemoteInvocationExecution.START_FEATURE_SERVER);
+
         if (getSandboxOptions(config).shouldEnableDebugThread()) {
             mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
         }
         for (Entry<String, String> envEntry :
                 getSandboxOptions(config).getEnvVariables().entrySet()) {
             mRunUtil.setEnvVariable(envEntry.getKey(), envEntry.getValue());
+        }
+        if (config.getConfigurationDescription().getMetaData(TradefedFeatureServer.SERVER_REFERENCE)
+                != null) {
+            mRunUtil.setEnvVariable(
+                    TradefedFeatureServer.SERVER_REFERENCE,
+                    config.getConfigurationDescription()
+                            .getAllMetaData()
+                            .getUniqueMap()
+                            .get(TradefedFeatureServer.SERVER_REFERENCE));
         }
 
         try {
@@ -353,6 +366,7 @@ public class TradefedSandbox implements ISandbox {
             }
             String[] args =
                     QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
+
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
                 listener.testLog("sandbox-global-config", LogDataType.HARNESS_CONFIG, source);
@@ -361,7 +375,6 @@ public class TradefedSandbox implements ISandbox {
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
             }
-
             try {
                 mSerializedConfiguration =
                         SandboxConfigUtil.dumpConfigForVersion(

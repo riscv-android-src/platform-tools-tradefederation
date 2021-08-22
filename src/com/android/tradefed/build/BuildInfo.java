@@ -184,7 +184,15 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void addBuildAttribute(String attributeName, String attributeValue) {
+        if (attributeValue == null) {
+            attributeValue = "";
+        }
         mBuildAttributes.put(attributeName, attributeValue);
+    }
+
+    @Override
+    public void removeBuildAttribute(String attributeName) {
+        mBuildAttributes.remove(attributeName);
     }
 
     /** {@inheritDoc} */
@@ -357,6 +365,10 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void setFile(String name, File file, String version) {
+        if (file == null) {
+            CLog.w("Tried to add to build info file name '%s' which is null.", name);
+            return;
+        }
         if (!mVersionedFileMap.containsKey(name)) {
             mVersionedFileMap.put(name, new VersionedFile(file, version));
         }

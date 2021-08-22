@@ -15,14 +15,10 @@
  */
 package com.android.tradefed.testtype;
 
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expectLastCall;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -30,13 +26,14 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.ArrayUtil;
 
-import junit.framework.AssertionFailedError;
-
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -58,11 +55,12 @@ public class PythonUnitTestResultParserTest {
     public static final String PYTHON_OUTPUT_FILE_3 = "python_output3.txt";
 
     private PythonUnitTestResultParser mParser;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() throws Exception {
-        mMockListener = createMock(ITestInvocationListener.class);
+        MockitoAnnotations.initMocks(this);
+
         mParser = new PythonUnitTestResultParser(ArrayUtil.list(mMockListener), "test");
     }
 
@@ -130,37 +128,30 @@ public class PythonUnitTestResultParserTest {
     @Test
     public void testParseNoTests() throws Exception {
         String[] output = {
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 0 tests in 0.000s",
-                "",
-                "OK"
+            "", PythonUnitTestResultParser.DASH_LINE, "Ran 0 tests in 0.000s", "", "OK"
         };
-        setRunListenerChecks(0, 0);
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        verify(mMockListener, times(1)).testRunStarted("test", 0);
+        verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestPass() throws Exception {
         String[] output = {
-                "b (a) ... ok",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "OK"
+            "b (a) ... ok", "", PythonUnitTestResultParser.DASH_LINE, "Ran 1 test in 1s", "", "OK"
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
@@ -173,124 +164,146 @@ public class PythonUnitTestResultParserTest {
             "",
             "OK"
         };
-        setRunListenerChecks(1, 1000);
-        // The below verifies that the listener method is never called.
-        mMockListener.testStarted(anyObject());
-        expectLastCall().andThrow(new AssertionError("unexpected"));
-        replay(mMockListener);
 
         mParser.processNewLines(output);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestPassWithExpectedFailure() throws Exception {
         String[] output = {
-                "b (a) ... expected failure",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "OK (expected failures=1)"
+            "b (a) ... expected failure",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "OK (expected failures=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseMultiTestPass() throws Exception {
         String[] output = {
-                "b (a) ... ok",
-                "d (c) ... ok",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 2 tests in 1s",
-                "",
-                "OK"
+            "b (a) ... ok",
+            "d (c) ... ok",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 2 tests in 1s",
+            "",
+            "OK"
         };
-        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
-        boolean didPass[] = {true, true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(2, 1000);
+        TestDescription id = new TestDescription("a", "b");
+        TestDescription id2 = new TestDescription("c", "d");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 2);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id2));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id2), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseMultiTestPassWithOneExpectedFailure() throws Exception {
         String[] output = {
-                "b (a) ... expected failure",
-                "d (c) ... ok",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 2 tests in 1s",
-                "",
-                "OK (expected failures=1)"
+            "b (a) ... expected failure",
+            "d (c) ... ok",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 2 tests in 1s",
+            "",
+            "OK (expected failures=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
-        boolean[] didPass = {true, true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(2, 1000);
+        TestDescription id = new TestDescription("a", "b");
+        TestDescription id2 = new TestDescription("c", "d");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 2);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id2));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id2), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseMultiTestPassWithAllExpectedFailure() throws Exception {
         String[] output = {
-                "b (a) ... expected failure",
-                "d (c) ... expected failure",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 2 tests in 1s",
-                "",
-                "OK (expected failures=2)"
+            "b (a) ... expected failure",
+            "d (c) ... expected failure",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 2 tests in 1s",
+            "",
+            "OK (expected failures=2)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
-        boolean[] didPass = {true, true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(2, 1000);
+        TestDescription id = new TestDescription("a", "b");
+        TestDescription id2 = new TestDescription("c", "d");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 2);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id2));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id2), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestFail() throws Exception {
         String[] output = {
-                "b (a) ... ERROR",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "ERROR: b (a)",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
-                "    raise ValueError()",
-                "ValueError",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "FAILED (errors=1)"
+            "b (a) ... ERROR",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "ERROR: b (a)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+            "    raise ValueError()",
+            "ValueError",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "FAILED (errors=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {false};
-        setRunListenerChecks(1, 1000);
-        setTestIdChecks(ids, didPass);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1)).testFailed(Mockito.any(), (String) Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
@@ -310,180 +323,204 @@ public class PythonUnitTestResultParserTest {
             "",
             "FAILED (failures=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
-        boolean[] didPass = {false, true};
-        setRunListenerChecks(2, 1000);
-        setTestIdChecks(ids, didPass);
+        TestDescription id = new TestDescription("a", "b");
+        TestDescription id2 = new TestDescription("c", "d");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 2);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id2));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id2), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1)).testFailed(Mockito.any(), (String) Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseMultiTestFailWithExpectedFailure() throws Exception {
         String[] output = {
-                "b (a) ... expected failure",
-                "d (c) ... ERROR",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "ERROR: d (c)",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
-                "    raise ValueError()",
-                "ValueError",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "FAILED (errors=1)"
+            "b (a) ... expected failure",
+            "d (c) ... ERROR",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "ERROR: d (c)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+            "    raise ValueError()",
+            "ValueError",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "FAILED (errors=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
-        boolean[] didPass = {true, false};
-        setRunListenerChecks(1, 1000);
-        setTestIdChecks(ids, didPass);
+        TestDescription id = new TestDescription("a", "b");
+        TestDescription id2 = new TestDescription("c", "d");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id2));
+        inOrder.verify(mMockListener, times(1)).testFailed(Mockito.any(), (String) Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id2), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestUnexpectedSuccess() throws Exception {
         String[] output = {
-                "b (a) ... unexpected success",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "OK (unexpected success=1)",
+            "b (a) ... unexpected success",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "OK (unexpected success=1)",
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {false};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1)).testFailed(Mockito.any(), (String) Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestSkipped() throws Exception {
         String[] output = {
-                "b (a) ... skipped 'reason foo'",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "OK (skipped=1)",
+            "b (a) ... skipped 'reason foo'",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "OK (skipped=1)",
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {false};
-        boolean[] didSkip = {true};
-        setTestIdChecks(ids, didPass, didSkip);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1)).testIgnored(Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestPassWithDocString() throws Exception {
         String[] output = {
-                "b (a)",
-                "doc string foo bar ... ok",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "OK",
+            "b (a)",
+            "doc string foo bar ... ok",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "OK",
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {true};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSingleTestFailWithDocString() throws Exception {
         String[] output = {
-                "b (a)",
-                "doc string foo bar ... ERROR",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "ERROR: b (a)",
-                "doc string foo bar",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
-                "    raise ValueError()",
-                "ValueError",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "FAILED (errors=1)"
+            "b (a)",
+            "doc string foo bar ... ERROR",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "ERROR: b (a)",
+            "doc string foo bar",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+            "    raise ValueError()",
+            "ValueError",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "FAILED (errors=1)"
         };
-        TestDescription[] ids = {new TestDescription("a", "b")};
-        boolean[] didPass = {false};
-        setTestIdChecks(ids, didPass);
-        setRunListenerChecks(1, 1000);
+        TestDescription id = new TestDescription("a", "b");
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.eq(id));
+        inOrder.verify(mMockListener, times(1)).testFailed(Mockito.any(), (String) Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.eq(id), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseOneWithEverything() throws Exception {
         String[] output = {
-                "testError (foo.testFoo) ... ERROR",
-                "testExpectedFailure (foo.testFoo) ... expected failure",
-                "testFail (foo.testFoo) ... FAIL",
-                "testFailWithDocString (foo.testFoo)",
-                "foo bar ... FAIL",
-                "testOk (foo.testFoo) ... ok",
-                "testOkWithDocString (foo.testFoo)",
-                "foo bar ... ok",
-                "testSkipped (foo.testFoo) ... skipped 'reason foo'",
-                "testUnexpectedSuccess (foo.testFoo) ... unexpected success",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "ERROR: testError (foo.testFoo)",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "File \"foo.py\", line 11, in testError",
-                "self.assertEqual(2+2, 5/0)",
-                "ZeroDivisionError: integer division or modulo by zero",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "FAIL: testFail (foo.testFoo)",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "File \"foo.py\", line 8, in testFail",
-                "self.assertEqual(2+2, 5)",
-                "AssertionError: 4 != 5",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "FAIL: testFailWithDocString (foo.testFoo)",
-                "foo bar",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "File \"foo.py\", line 8, in testFail",
-                "self.assertEqual(2+2, 5)",
-                "AssertionError: 4 != 5",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 8 tests in 1s",
-                "",
-                "FAILED (failures=2, errors=1, skipped=1, expected failures=1, unexpected successes=1)",
+            "testError (foo.testFoo) ... ERROR",
+            "testExpectedFailure (foo.testFoo) ... expected failure",
+            "testFail (foo.testFoo) ... FAIL",
+            "testFailWithDocString (foo.testFoo)",
+            "foo bar ... FAIL",
+            "testOk (foo.testFoo) ... ok",
+            "testOkWithDocString (foo.testFoo)",
+            "foo bar ... ok",
+            "testSkipped (foo.testFoo) ... skipped 'reason foo'",
+            "testUnexpectedSuccess (foo.testFoo) ... unexpected success",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "ERROR: testError (foo.testFoo)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "File \"foo.py\", line 11, in testError",
+            "self.assertEqual(2+2, 5/0)",
+            "ZeroDivisionError: integer division or modulo by zero",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "FAIL: testFail (foo.testFoo)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "File \"foo.py\", line 8, in testFail",
+            "self.assertEqual(2+2, 5)",
+            "AssertionError: 4 != 5",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "FAIL: testFailWithDocString (foo.testFoo)",
+            "foo bar",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "File \"foo.py\", line 8, in testFail",
+            "self.assertEqual(2+2, 5)",
+            "AssertionError: 4 != 5",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 8 tests in 1s",
+            "",
+            "FAILED (failures=2, errors=1, skipped=1, expected failures=1, unexpected successes=1)",
         };
         TestDescription[] ids = {
             new TestDescription("foo.testFoo", "testError"),
@@ -495,153 +532,140 @@ public class PythonUnitTestResultParserTest {
             new TestDescription("foo.testFoo", "testSkipped"),
             new TestDescription("foo.testFoo", "testUnexpectedSuccess")
         };
-        boolean[] didPass = {false, true, false, false, true, true, false, false};
-        boolean[] didSkip = {false, false, false, false, false, false, true, false};
-        setTestIdChecks(ids, didPass, didSkip);
-        setRunListenerChecks(8, 1000);
 
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        verify(mMockListener, times(1)).testRunStarted("test", 8);
+        verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testCaptureMultilineTraceback() {
         String[] output = {
-                "b (a) ... ERROR",
-                "",
-                PythonUnitTestResultParser.EQUAL_LINE,
-                "ERROR: b (a)",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Traceback (most recent call last):",
-                "  File \"test_rangelib.py\", line 129, in test_reallyfail",
-                "    raise ValueError()",
-                "ValueError",
-                "",
-                PythonUnitTestResultParser.DASH_LINE,
-                "Ran 1 test in 1s",
-                "",
-                "FAILED (errors=1)"
+            "b (a) ... ERROR",
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "ERROR: b (a)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "  File \"test_rangelib.py\", line 129, in test_reallyfail",
+            "    raise ValueError()",
+            "ValueError",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "FAILED (errors=1)"
         };
         String[] tracebackLines = Arrays.copyOfRange(output, 5, 10);
         String expectedTrackback = String.join(System.lineSeparator(), tracebackLines);
 
-        mMockListener.testStarted(anyObject());
-        expectLastCall().times(1);
-        mMockListener.testFailed(anyObject(), eq(expectedTrackback));
-        expectLastCall().times(1);
-        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        expectLastCall().times(1);
-        setRunListenerChecks(1, 1000);
-
-        replay(mMockListener);
         mParser.processNewLines(output);
-        verify(mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener, times(1)).testRunStarted("test", 1);
+        inOrder.verify(mMockListener, times(1)).testStarted(Mockito.any());
+        inOrder.verify(mMockListener, times(1))
+                .testFailed(Mockito.any(), Mockito.eq(expectedTrackback));
+        inOrder.verify(mMockListener, times(1))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener, times(1)).testRunEnded(1000L, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseRealOutput() {
         String[] contents = readInFile(PYTHON_OUTPUT_FILE_1);
 
-        mMockListener.testRunStarted("test", 11);
-        for (int i = 0; i < 11; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")),
-                (String) EasyMock.anyObject());
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")),
-                (String) EasyMock.anyObject());
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
-        // Multi-line error
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")),
-                (String) EasyMock.anyObject());
-
-        mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
-        replay(mMockListener);
         mParser.processNewLines(contents);
-        verify(mMockListener);
-    }
 
-    private void setRunListenerChecks(int numTests, long time) {
-        mMockListener.testRunStarted("test", numTests);
-        expectLastCall().times(1);
-        mMockListener.testRunEnded(time, new HashMap<String, Metric>());
-        expectLastCall().times(1);
+        verify(mMockListener).testRunStarted("test", 11);
+        verify(mMockListener, times(11)).testStarted(Mockito.any());
+        verify(mMockListener, times(11))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.DisconnectionTest", "test_disconnect")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.EmulatorTest", "test_emulator_connect")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ServerTest", "test_handle_inheritance")),
+                        (String) Mockito.any());
+        verify(mMockListener).testRunEnded(10314, new HashMap<String, Metric>());
     }
 
     /** Test another output starting by a warning */
     @Test
     public void testParseRealOutput2() {
         String[] contents = readInFile(PYTHON_OUTPUT_FILE_2);
-        mMockListener.testRunStarted("test", 107);
-        for (int i = 0; i < 107; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        mMockListener.testRunEnded(295, new HashMap<String, Metric>());
-        replay(mMockListener);
+
         mParser.processNewLines(contents);
-        verify(mMockListener);
+
+        verify(mMockListener).testRunStarted("test", 107);
+        verify(mMockListener, times(107)).testStarted(Mockito.any());
+        verify(mMockListener, times(107))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testRunEnded(295, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseRealOutput3() {
         String[] contents = readInFile(PYTHON_OUTPUT_FILE_3);
 
-        mMockListener.testRunStarted("test", 11);
-        for (int i = 0; i < 11; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")),
-                (String) EasyMock.anyObject());
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
-
-        mMockListener.testRunEnded(27353, new HashMap<String, Metric>());
-        replay(mMockListener);
         mParser.processNewLines(contents);
-        verify(mMockListener);
+
+        verify(mMockListener).testRunStarted("test", 11);
+        verify(mMockListener, times(11)).testStarted(Mockito.any());
+        verify(mMockListener, times(11))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription("__main__.ConnectionTest", "test_reconnect")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+        verify(mMockListener).testRunEnded(27353, new HashMap<String, Metric>());
     }
 
     @Test
     public void testParseSubtestOutput() {
         String[] contents = readInFile("python_subtest_output.txt");
-        int totalTestCount = 4;
 
-        mMockListener.testRunStarted("test", totalTestCount);
-        for (int i = 0; i < totalTestCount; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        mMockListener.testFailed(
-                EasyMock.eq(
-                        new TestDescription(
-                                "__main__.ExampleTest", "test_with_some_failing_subtests")),
-                (String) EasyMock.anyObject());
-        mMockListener.testFailed(
-                EasyMock.eq(
-                        new TestDescription(
-                                "__main__.ExampleTest", "test_with_more_failing_subtests")),
-                (String) EasyMock.anyObject());
-
-        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
-        replay(mMockListener);
         mParser.processNewLines(contents);
-        verify(mMockListener);
+
+        verify(mMockListener).testRunStarted("test", 4);
+        verify(mMockListener, times(4)).testStarted(Mockito.any());
+        verify(mMockListener, times(4))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ExampleTest", "test_with_some_failing_subtests")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ExampleTest", "test_with_more_failing_subtests")),
+                        (String) Mockito.any());
+        verify(mMockListener).testRunEnded(1, new HashMap<String, Metric>());
     }
 
     @Test
@@ -656,41 +680,54 @@ public class PythonUnitTestResultParserTest {
 
         String[] contents = readInFile(PYTHON_OUTPUT_FILE_1);
 
-        mMockListener.testRunStarted("test", 11);
-        for (int i = 0; i < 11; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")),
-                (String) EasyMock.anyObject());
-        // Passed/failed tests are ignored due to include-filter setting.
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.CommandlineTest", "test_help")));
-        mMockListener.testIgnored(
-                EasyMock.eq(
-                        new TestDescription(
-                                "__main__.CommandlineTest", "test_tcpip_error_messages")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.CommandlineTest", "test_version")));
-        mMockListener.testIgnored(
-                EasyMock.eq(
-                        new TestDescription("__main__.ConnectionTest", "test_already_connected")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")));
-
-        mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
-        replay(mMockListener);
         mParser.processNewLines(contents);
-        verify(mMockListener);
+
+        verify(mMockListener).testRunStarted("test", 11);
+        verify(mMockListener, times(11)).testStarted(Mockito.any());
+        verify(mMockListener, times(11))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.EmulatorTest", "test_emulator_connect")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(new TestDescription("__main__.CommandlineTest", "test_help")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.CommandlineTest", "test_tcpip_error_messages")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.CommandlineTest", "test_version")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ConnectionTest", "test_already_connected")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.ConnectionTest", "test_reconnect")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.DisconnectionTest", "test_disconnect")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ServerTest", "test_handle_inheritance")));
+        verify(mMockListener).testRunEnded(10314, new HashMap<String, Metric>());
     }
 
     @Test
@@ -705,77 +742,42 @@ public class PythonUnitTestResultParserTest {
 
         String[] contents = readInFile(PYTHON_OUTPUT_FILE_1);
 
-        mMockListener.testRunStarted("test", 11);
-        for (int i = 0; i < 11; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        // Passed/failed tests are ignored due to exclude-filter setting.
-        mMockListener.testIgnored(
-                EasyMock.eq(
-                        new TestDescription("__main__.ConnectionTest", "test_connect_ipv4_ipv6")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emu_kill")));
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")));
-
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
-
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")),
-                (String) EasyMock.anyObject());
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")),
-                (String) EasyMock.anyObject());
-
-        mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
-        replay(mMockListener);
         mParser.processNewLines(contents);
-        verify(mMockListener);
-    }
 
-    private void setTestIdChecks(TestDescription[] ids, boolean[] didPass) {
-        for (int i = 0; i < ids.length; i++) {
-            mMockListener.testStarted(ids[i]);
-            expectLastCall().times(1);
-            if (didPass[i]) {
-                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
-                expectLastCall().times(1);
-                mMockListener.testFailed(eq(ids[i]), (String)anyObject());
-                expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
-            } else {
-                mMockListener.testFailed(eq(ids[i]), (String)anyObject());
-                expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
-                expectLastCall().times(1);
-            }
-        }
-    }
-
-    private void setTestIdChecks(TestDescription[] ids, boolean[] didPass, boolean[] didSkip) {
-        for (int i = 0; i < ids.length; i++) {
-            mMockListener.testStarted(ids[i]);
-            expectLastCall().times(1);
-            if (didPass[i]) {
-                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
-                expectLastCall().times(1);
-                mMockListener.testFailed(eq(ids[i]), (String) anyObject());
-                expectLastCall().andThrow(new AssertionFailedError()).anyTimes();
-            } else if (didSkip[i]) {
-                mMockListener.testIgnored(ids[i]);
-                expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
-                expectLastCall().times(1);
-            } else {
-                mMockListener.testFailed(eq(ids[i]), (String)anyObject());
-                expectLastCall().times(1);
-                mMockListener.testEnded(ids[i], new HashMap<String, Metric>());
-                expectLastCall().times(1);
-            }
-        }
+        verify(mMockListener).testRunStarted("test", 11);
+        verify(mMockListener, times(11)).testStarted(Mockito.any());
+        verify(mMockListener, times(11))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ConnectionTest", "test_connect_ipv4_ipv6")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(new TestDescription("__main__.EmulatorTest", "test_emu_kill")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.EmulatorTest", "test_emulator_connect")));
+        verify(mMockListener)
+                .testIgnored(
+                        Mockito.eq(
+                                new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.DisconnectionTest", "test_disconnect")),
+                        (String) Mockito.any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        "__main__.ServerTest", "test_handle_inheritance")),
+                        (String) Mockito.any());
+        verify(mMockListener).testRunEnded(10314, new HashMap<String, Metric>());
     }
 
     /**
@@ -804,4 +806,3 @@ public class PythonUnitTestResultParserTest {
         return fileContents.toArray(new String[fileContents.size()]);
     }
 }
-

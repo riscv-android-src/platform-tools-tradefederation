@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
@@ -41,13 +42,14 @@ import com.android.tradefed.result.TestDescription;
 
 import com.google.common.collect.ImmutableMap;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.junit.runners.model.InitializationError;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.HashMap;
@@ -103,15 +105,15 @@ public class DeviceJUnit4ClassRunnerTest {
         }
     }
 
-    private ITestInvocationListener mListener;
+    @Mock ITestInvocationListener mListener;
     private HostTest mHostTest;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
+
         mHostTest = new HostTest();
         mHostTest.setBuild(new BuildInfo());
         mHostTest.setDevice(mMockDevice);
@@ -127,12 +129,12 @@ public class DeviceJUnit4ClassRunnerTest {
     public void testDynamicDownload() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 }

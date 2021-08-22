@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -34,12 +35,15 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.UiAutomatorTest;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -85,6 +89,13 @@ public class AtestRunnerTest {
         abis.add(new Abi(ABI, AbiUtils.getBitness(ABI)));
         doReturn(abis).when(mSpyRunner).getAbis(mMockDevice);
         doReturn(new File("some-dir")).when(mBuildInfo).getTestsDir();
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("Supported states: [\n" +
+                " DeviceState{identifier=0, name='DEFAULT'},\n" +
+                "]\n");
+        when(mMockDevice.executeShellV2Command("cmd device_state print-states"))
+                .thenReturn(result);
     }
 
     @Test

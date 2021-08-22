@@ -15,19 +15,22 @@
  */
 package com.android.tradefed.result.ddmlib;
 
+import static org.mockito.Mockito.verify;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
@@ -38,11 +41,12 @@ public class TestRunToTestInvocationForwarderTest {
     private static final String RUN_NAME = "run";
 
     private TestRunToTestInvocationForwarder mForwarder;
-    private ITestLifeCycleReceiver mMockListener;
+    @Mock ITestLifeCycleReceiver mMockListener;
 
     @Before
     public void setUp() {
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        MockitoAnnotations.initMocks(this);
+
         mForwarder = new TestRunToTestInvocationForwarder(mMockListener);
     }
 
@@ -52,20 +56,7 @@ public class TestRunToTestInvocationForwarderTest {
         TestDescription td1 = new TestDescription(tid1.getClassName(), tid1.getTestName());
         TestIdentifier tid2 = new TestIdentifier("class", "test2");
         TestDescription td2 = new TestDescription(tid2.getClassName(), tid2.getTestName());
-        mMockListener.testRunStarted(RUN_NAME, 2);
 
-        mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
-        mMockListener.testEnded(td1, new HashMap<String, Metric>());
-
-        mMockListener.testStarted(td2);
-        mMockListener.testFailed(td2, FailureDescription.create("I failed"));
-        mMockListener.testEnded(td2, new HashMap<String, Metric>());
-
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mMockListener);
         mForwarder.testRunStarted(RUN_NAME, 2);
 
         mForwarder.testStarted(tid1);
@@ -77,7 +68,16 @@ public class TestRunToTestInvocationForwarderTest {
         mForwarder.testEnded(tid2, new HashMap<>());
 
         mForwarder.testRunEnded(500L, new HashMap<>());
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testRunStarted(RUN_NAME, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testFailed(td1, FailureDescription.create("I failed"));
+        verify(mMockListener).testEnded(td1, new HashMap<String, Metric>());
+        verify(mMockListener).testStarted(td2);
+        verify(mMockListener).testFailed(td2, FailureDescription.create("I failed"));
+        verify(mMockListener).testEnded(td2, new HashMap<String, Metric>());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -85,11 +85,7 @@ public class TestRunToTestInvocationForwarderTest {
         TestIdentifier tid1 = new TestIdentifier("class", "test1");
         TestDescription td1 = new TestDescription(tid1.getClassName(), tid1.getTestName());
         TestIdentifier tid2 = new TestIdentifier("class", "null");
-        mMockListener.testRunStarted(RUN_NAME, 2);
 
-        mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
-        mMockListener.testEnded(td1, new HashMap<String, Metric>());
         // Second bad method is not propagated, instead we fail the run
         FailureDescription expectedFailure =
                 FailureDescription.create(
@@ -99,12 +95,7 @@ public class TestRunToTestInvocationForwarderTest {
                                 tid2.getTestName(),
                                 tid2),
                         FailureStatus.TEST_FAILURE);
-        mMockListener.testRunFailed(expectedFailure);
 
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mMockListener);
         mForwarder.testRunStarted(RUN_NAME, 2);
 
         mForwarder.testStarted(tid1);
@@ -116,7 +107,14 @@ public class TestRunToTestInvocationForwarderTest {
         mForwarder.testEnded(tid2, new HashMap<>());
 
         mForwarder.testRunEnded(500L, new HashMap<>());
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testRunStarted(RUN_NAME, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testFailed(td1, FailureDescription.create("I failed"));
+        verify(mMockListener).testEnded(td1, new HashMap<String, Metric>());
+        verify(mMockListener).testRunFailed(expectedFailure);
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -124,11 +122,7 @@ public class TestRunToTestInvocationForwarderTest {
         TestIdentifier tid1 = new TestIdentifier("class", "test1");
         TestDescription td1 = new TestDescription(tid1.getClassName(), tid1.getTestName());
         TestIdentifier tid2 = new TestIdentifier("class", "initializationError");
-        mMockListener.testRunStarted(RUN_NAME, 2);
 
-        mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
-        mMockListener.testEnded(td1, new HashMap<String, Metric>());
         // Second bad method is not propagated, instead we fail the run
         FailureDescription expectedFailure =
                 FailureDescription.create(
@@ -138,12 +132,7 @@ public class TestRunToTestInvocationForwarderTest {
                                 tid2.getTestName(),
                                 tid2),
                         FailureStatus.TEST_FAILURE);
-        mMockListener.testRunFailed(expectedFailure);
 
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mMockListener);
         mForwarder.testRunStarted(RUN_NAME, 2);
 
         mForwarder.testStarted(tid1);
@@ -155,6 +144,13 @@ public class TestRunToTestInvocationForwarderTest {
         mForwarder.testEnded(tid2, new HashMap<>());
 
         mForwarder.testRunEnded(500L, new HashMap<>());
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testRunStarted(RUN_NAME, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testFailed(td1, FailureDescription.create("I failed"));
+        verify(mMockListener).testEnded(td1, new HashMap<String, Metric>());
+        verify(mMockListener).testRunFailed(expectedFailure);
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 }

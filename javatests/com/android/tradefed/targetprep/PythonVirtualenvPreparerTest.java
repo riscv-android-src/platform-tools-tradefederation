@@ -16,15 +16,12 @@
 
 package com.android.tradefed.targetprep;
 
-import static org.easymock.EasyMock.anyLong;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.createNiceMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.replay;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -37,28 +34,31 @@ import com.google.common.base.Throwables;
 
 import junit.framework.TestCase;
 
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
 import java.io.File;
 
 public class PythonVirtualenvPreparerTest extends TestCase {
     private PythonVirtualenvPreparer mPreparer;
-    private IRunUtil mMockRunUtil;
-    private ITestDevice mMockDevice;
+    @Mock IRunUtil mMockRunUtil;
+    @Mock ITestDevice mMockDevice;
 
     @Override
     public void setUp() throws Exception {
-        mMockRunUtil = createNiceMock(IRunUtil.class);
-        mMockDevice = createMock(ITestDevice.class);
-        expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
         mPreparer = new PythonVirtualenvPreparer();
         mPreparer.mRunUtil = mMockRunUtil;
     }
 
     public void testInstallDeps_reqFile_success() throws Exception {
         mPreparer.setRequirementsFile(new File("foobar"));
-        expect(mMockRunUtil.runTimedCmd(anyLong(),
-                (String)anyObject(), (String)anyObject(), (String)anyObject(), (String)anyObject()))
-            .andReturn(new CommandResult(CommandStatus.SUCCESS));
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        anyLong(), (String) any(), (String) any(), (String) any(), (String) any()))
+                .thenReturn(new CommandResult(CommandStatus.SUCCESS));
+
         IBuildInfo buildInfo = new BuildInfo();
         mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") != null);
@@ -66,10 +66,9 @@ public class PythonVirtualenvPreparerTest extends TestCase {
 
     public void testInstallDeps_depModule_success() throws Exception {
         mPreparer.addDepModule("blahblah");
-        expect(mMockRunUtil.runTimedCmd(anyLong(),
-                (String)anyObject(), (String)anyObject(), (String)anyObject())).andReturn(
-                new CommandResult(CommandStatus.SUCCESS));
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), (String) any(), (String) any(), (String) any()))
+                .thenReturn(new CommandResult(CommandStatus.SUCCESS));
+
         IBuildInfo buildInfo = new BuildInfo();
         mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") != null);
@@ -77,10 +76,10 @@ public class PythonVirtualenvPreparerTest extends TestCase {
 
     public void testInstallDeps_reqFile_failure() throws Exception {
         mPreparer.setRequirementsFile(new File("foobar"));
-        expect(mMockRunUtil.runTimedCmd(anyLong(),
-                (String)anyObject(), (String)anyObject(), (String)anyObject(), (String)anyObject()))
-            .andReturn(new CommandResult(CommandStatus.TIMED_OUT));
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        anyLong(), (String) any(), (String) any(), (String) any(), (String) any()))
+                .thenReturn(new CommandResult(CommandStatus.TIMED_OUT));
+
         IBuildInfo buildInfo = new BuildInfo();
         try {
             mPreparer.installDeps(buildInfo, mMockDevice);
@@ -92,10 +91,9 @@ public class PythonVirtualenvPreparerTest extends TestCase {
 
     public void testInstallDeps_depModule_failure() throws Exception {
         mPreparer.addDepModule("blahblah");
-        expect(mMockRunUtil.runTimedCmd(anyLong(),
-                (String)anyObject(), (String)anyObject(), (String)anyObject())).andReturn(
-                new CommandResult(CommandStatus.TIMED_OUT));
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), (String) any(), (String) any(), (String) any()))
+                .thenReturn(new CommandResult(CommandStatus.TIMED_OUT));
+
         IBuildInfo buildInfo = new BuildInfo();
         try {
             mPreparer.installDeps(buildInfo, mMockDevice);
@@ -114,9 +112,8 @@ public class PythonVirtualenvPreparerTest extends TestCase {
     public void testStartVirtualenv_throwTSE_whenVirtualenvNotFound() throws Exception {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStdout("bash: virtualenv: command not found");
-        expect(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
-                .andReturn(result);
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
+                .thenReturn(result);
 
         try {
             mPreparer.startVirtualenv(new BuildInfo(), mMockDevice);
@@ -134,9 +131,8 @@ public class PythonVirtualenvPreparerTest extends TestCase {
     public void testStartVirtualenv_throwTSE_whenVirtualenvIsTooOld() throws Exception {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStdout("virtualenv 16.7.10 from /path/to/site-packages/virtualenv/__init__.py");
-        expect(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
-                .andReturn(result);
-        replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
+                .thenReturn(result);
 
         try {
             mPreparer.startVirtualenv(new BuildInfo(), mMockDevice);

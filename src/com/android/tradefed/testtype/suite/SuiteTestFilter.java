@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 /** Represents a filter for including and excluding tests. */
 public class SuiteTestFilter {
 
+    private final Integer mShardIndex;
     private final String mAbi;
     private final String mName;
     private final String mTest;
@@ -45,7 +46,8 @@ public class SuiteTestFilter {
         if (filter.isEmpty()) {
             throw new IllegalArgumentException("Filter was empty");
         }
-        String[] parts = filter.split(" ");
+        String[] parts = filter.split(" +");
+        Integer shardIndex = null;
         String abi = null, name = null, test = null;
         // Either:
         // <name>
@@ -56,18 +58,29 @@ public class SuiteTestFilter {
             name = parts[0];
         } else {
             int index = 0;
-            if (AbiUtils.isAbiSupportedByCompatibility(parts[0])) {
-                abi = parts[0];
+            if (parts[index].startsWith("shard_")) {
+                shardIndex = Integer.parseInt(parts[index].substring("shard_".length()));
+                index++;
+            } else {
+                try {
+                    shardIndex = Integer.parseInt(parts[index]);
+                    index++;
+                } catch (NumberFormatException e) {
+                    // Ignore
+                }
+            }
+            if (AbiUtils.isAbiSupportedByCompatibility(parts[index])) {
+                abi = parts[index];
                 index++;
             }
             name = parts[index];
             index++;
-            parts = filter.split(" ", index + 1);
+            parts = filter.split(" +", index + 1);
             if (parts.length > index) {
                 test = parts[index];
             }
         }
-        return new SuiteTestFilter(abi, name, test);
+        return new SuiteTestFilter(shardIndex, abi, name, test);
     }
 
     /**
@@ -78,6 +91,18 @@ public class SuiteTestFilter {
      * @param test The test's identifier eg <package>.<class>#<method>
      */
     public SuiteTestFilter(String abi, String name, String test) {
+        this(null, abi, name, test);
+    }
+
+    /**
+     * Creates a new {@link SuiteTestFilter} from the given parts.
+     *
+     * @param abi The ABI must be supported {@link AbiUtils#isAbiSupportedByCompatibility(String)}
+     * @param name The module's name
+     * @param test The test's identifier eg <package>.<class>#<method>
+     */
+    public SuiteTestFilter(Integer shardIndex, String abi, String name, String test) {
+        mShardIndex = shardIndex;
         mAbi = abi;
         mName = name;
         mTest = test;
@@ -96,6 +121,10 @@ public class SuiteTestFilter {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        if (mShardIndex != null) {
+            sb.append(mShardIndex.toString());
+            sb.append(" ");
+        }
         if (mAbi != null) {
             sb.append(mAbi.trim());
             sb.append(" ");
@@ -108,6 +137,11 @@ public class SuiteTestFilter {
             sb.append(mTest.trim());
         }
         return sb.toString();
+    }
+
+    /** Returns the shard index of the test, or null if not specified. */
+    public Integer getShardIndex() {
+        return mShardIndex;
     }
 
     /** @return the abi of this filter, or null if not specified. */
@@ -133,8 +167,63 @@ public class SuiteTestFilter {
         return mName;
     }
 
+    /**
+     * If the module is parameterized, returns the parameter value. Null if not parameterized.
+     */
+    public String getParameterName() {
+        // If the module looks parameterized, return the parameter name.
+        Matcher m = PARAMETERIZED_TEST_REGEX.matcher(mName);
+        if (m.find()) {
+            return m.group(2);
+        }
+        return null;
+    }
+
     /** @return the test identifier of this filter, or null if not specified. */
     public String getTest() {
         return mTest;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mAbi == null) ? 0 : mAbi.hashCode());
+        result = prime * result + ((mName == null) ? 0 : mName.hashCode());
+        result = prime * result + ((mShardIndex == null) ? 0 : mShardIndex.hashCode());
+        result = prime * result + ((mTest == null) ? 0 : mTest.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        SuiteTestFilter other = (SuiteTestFilter) obj;
+        if (mAbi == null) {
+            if (other.mAbi != null)
+                return false;
+        } else if (!mAbi.equals(other.mAbi))
+            return false;
+        if (mName == null) {
+            if (other.mName != null)
+                return false;
+        } else if (!mName.equals(other.mName))
+            return false;
+        if (mShardIndex == null) {
+            if (other.mShardIndex != null)
+                return false;
+        } else if (!mShardIndex.equals(other.mShardIndex))
+            return false;
+        if (mTest == null) {
+            if (other.mTest != null)
+                return false;
+        } else if (!mTest.equals(other.mTest))
+            return false;
+        return true;
     }
 }

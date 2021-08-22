@@ -21,7 +21,7 @@ import com.android.tradefed.config.IConfiguration;
  * Handler that specify that nothing should be done and the parameter should not create any extra
  * module.
  */
-public class NegativeHandler implements IModuleParameter {
+public class NegativeHandler implements IModuleParameterHandler {
 
     @Override
     public String getParameterIdentifier() {

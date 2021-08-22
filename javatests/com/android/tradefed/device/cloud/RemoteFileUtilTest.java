@@ -18,6 +18,7 @@ package com.android.tradefed.device.cloud;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.util.CommandResult;
@@ -27,11 +28,11 @@ import com.android.tradefed.util.IRunUtil;
 
 import com.google.common.net.HostAndPort;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.Arrays;
@@ -45,7 +46,7 @@ public class RemoteFileUtilTest {
 
     @Before
     public void setUp() {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        mMockRunUtil = Mockito.mock(IRunUtil.class);
         mOptions = new TestDeviceOptions();
     }
 
@@ -55,22 +56,22 @@ public class RemoteFileUtilTest {
         GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
         String remotePath = "/home/vsoc-01/cuttlefish_runtime/kernel.log";
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
+        when(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+                                Mockito.anyLong(),
+                                Mockito.eq("scp"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("UserKnownHostsFile=/dev/null"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("StrictHostKeyChecking=no"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("ServerAliveInterval=10"),
+                                Mockito.eq("-i"),
+                                Mockito.any(),
+                                Mockito.eq("root@127.0.0.1:" + remotePath),
+                                Mockito.any()))
+                .thenReturn(res);
+
         File resFile = null;
         try {
             resFile =
@@ -81,7 +82,6 @@ public class RemoteFileUtilTest {
         } finally {
             FileUtil.deleteFile(resFile);
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test when fetching a remote file fails. */
@@ -91,26 +91,25 @@ public class RemoteFileUtilTest {
         String remotePath = "/home/vsoc-01/cuttlefish_runtime/kernel.log";
         CommandResult res = new CommandResult(CommandStatus.FAILED);
         res.setStderr("Failed to fetch file.");
-        EasyMock.expect(
+        when(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+                                Mockito.anyLong(),
+                                Mockito.eq("scp"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("UserKnownHostsFile=/dev/null"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("StrictHostKeyChecking=no"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("ServerAliveInterval=10"),
+                                Mockito.eq("-i"),
+                                Mockito.any(),
+                                Mockito.eq("root@127.0.0.1:" + remotePath),
+                                Mockito.any()))
+                .thenReturn(res);
+
         File resFile =
                 RemoteFileUtil.fetchRemoteFile(fakeInfo, mOptions, mMockRunUtil, 500L, remotePath);
         assertNull(resFile);
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test pulling a directory from the remote hosts. */
@@ -119,23 +118,22 @@ public class RemoteFileUtilTest {
         GceAvdInfo fakeInfo = new GceAvdInfo("ins-gce", HostAndPort.fromHost("127.0.0.1"));
         String remotePath = "/home/vsoc-01/cuttlefish_runtime/tombstones";
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
+        when(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("-r"),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+                                Mockito.anyLong(),
+                                Mockito.eq("scp"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("UserKnownHostsFile=/dev/null"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("StrictHostKeyChecking=no"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("ServerAliveInterval=10"),
+                                Mockito.eq("-i"),
+                                Mockito.any(),
+                                Mockito.eq("-r"),
+                                Mockito.eq("root@127.0.0.1:" + remotePath),
+                                Mockito.any()))
+                .thenReturn(res);
         File resDir = null;
         try {
             resDir =
@@ -146,7 +144,6 @@ public class RemoteFileUtilTest {
         } finally {
             FileUtil.recursiveDelete(resDir);
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test pushing a file to a remote instance via scp. */
@@ -156,23 +153,22 @@ public class RemoteFileUtilTest {
         String remotePath = "/home/vsoc-01/cuttlefish_runtime/kernel.log";
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         File localFile = FileUtil.createTempDir("test-remote-push-dir");
-        EasyMock.expect(
+        when(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("-R"),
-                                EasyMock.eq(localFile.getAbsolutePath()),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath)))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+                                Mockito.anyLong(),
+                                Mockito.eq("scp"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("UserKnownHostsFile=/dev/null"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("StrictHostKeyChecking=no"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("ServerAliveInterval=10"),
+                                Mockito.eq("-i"),
+                                Mockito.any(),
+                                Mockito.eq("-R"),
+                                Mockito.eq(localFile.getAbsolutePath()),
+                                Mockito.eq("root@127.0.0.1:" + remotePath)))
+                .thenReturn(res);
 
         try {
             boolean result =
@@ -188,7 +184,6 @@ public class RemoteFileUtilTest {
         } finally {
             FileUtil.recursiveDelete(localFile);
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test pushing a file to a remote instance via scp when it fails */
@@ -199,23 +194,22 @@ public class RemoteFileUtilTest {
         CommandResult res = new CommandResult(CommandStatus.FAILED);
         res.setStderr("failed to push to remote.");
         File localFile = FileUtil.createTempDir("test-remote-push-dir");
-        EasyMock.expect(
+        when(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("-R"),
-                                EasyMock.eq(localFile.getAbsolutePath()),
-                                EasyMock.eq("root@127.0.0.1:" + remotePath)))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+                                Mockito.anyLong(),
+                                Mockito.eq("scp"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("UserKnownHostsFile=/dev/null"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("StrictHostKeyChecking=no"),
+                                Mockito.eq("-o"),
+                                Mockito.eq("ServerAliveInterval=10"),
+                                Mockito.eq("-i"),
+                                Mockito.any(),
+                                Mockito.eq("-R"),
+                                Mockito.eq(localFile.getAbsolutePath()),
+                                Mockito.eq("root@127.0.0.1:" + remotePath)))
+                .thenReturn(res);
 
         try {
             boolean result =
@@ -231,6 +225,5 @@ public class RemoteFileUtilTest {
         } finally {
             FileUtil.recursiveDelete(localFile);
         }
-        EasyMock.verify(mMockRunUtil);
     }
 }

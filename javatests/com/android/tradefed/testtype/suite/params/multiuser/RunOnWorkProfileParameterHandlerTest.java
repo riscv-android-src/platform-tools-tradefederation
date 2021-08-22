@@ -21,8 +21,12 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.targetprep.RebootTargetPreparer;
+import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparer;
 import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer;
 import com.android.tradefed.testtype.suite.params.TestFilterable;
+
+import com.google.common.collect.ImmutableList;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +44,10 @@ public class RunOnWorkProfileParameterHandlerTest {
 
     private RunOnWorkProfileParameterHandler mHandler;
     private IConfiguration mModuleConfig;
+
+    private static final RunOnSystemUserTargetPreparer RUN_ON_SYSTEM_USER_TARGET_PREPARER =
+            new RunOnSystemUserTargetPreparer();
+    private static final RebootTargetPreparer OTHER_TARGET_PREPARER = new RebootTargetPreparer();
 
     @Before
     public void setUp() {
@@ -74,11 +82,16 @@ public class RunOnWorkProfileParameterHandlerTest {
     }
 
     @Test
-    public void addParameterSpecificConfig_addsRunOnWorkProfileTargetPreparer() {
+    public void addParameterSpecificConfig_replacesRunOnTargetPreparers() {
+        mModuleConfig.setTargetPreparers(
+                ImmutableList.of(RUN_ON_SYSTEM_USER_TARGET_PREPARER, OTHER_TARGET_PREPARER));
+
         mHandler.addParameterSpecificConfig(mModuleConfig);
 
+        assertEquals(2, mModuleConfig.getTargetPreparers().size());
         assertTrue(
                 mModuleConfig.getTargetPreparers().get(0)
                         instanceof RunOnWorkProfileTargetPreparer);
+        assertEquals(OTHER_TARGET_PREPARER, mModuleConfig.getTargetPreparers().get(1));
     }
 }

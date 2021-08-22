@@ -23,6 +23,7 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -53,7 +54,6 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.TestSuiteStub;
 import com.android.tradefed.util.IDisableable;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -107,16 +107,16 @@ public class InvocationExecutionTest {
     @Test
     public void testCleanUp() throws Exception {
         DeviceConfigurationHolder holder = new DeviceConfigurationHolder("default");
-        ITargetHostCleaner cleaner = EasyMock.createMock(ITargetHostCleaner.class);
+        ITargetHostCleaner cleaner = mock(ITargetHostCleaner.class);
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
-        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
-        EasyMock.expect(cleaner.isDisabled()).andReturn(false);
-        EasyMock.expect(cleaner.isTearDownDisabled()).andReturn(false);
-        cleaner.cleanUp(null, null);
-        EasyMock.replay(cleaner);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+        when(cleaner.isDisabled()).thenReturn(false);
+        when(cleaner.isTearDownDisabled()).thenReturn(false);
+
         mExec.doCleanUp(mContext, mConfig, null);
-        EasyMock.verify(cleaner);
+
+        verify(cleaner).cleanUp(null, null);
     }
 
     /**
@@ -126,16 +126,15 @@ public class InvocationExecutionTest {
     @Test
     public void testCleanUp_disabled() throws Exception {
         DeviceConfigurationHolder holder = new DeviceConfigurationHolder("default");
-        ITargetHostCleaner cleaner = EasyMock.createMock(ITargetHostCleaner.class);
+        ITargetHostCleaner cleaner = mock(ITargetHostCleaner.class);
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
-        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
-        EasyMock.expect(cleaner.isDisabled()).andReturn(true);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+        when(cleaner.isDisabled()).thenReturn(true);
         // cleaner.isTearDownDisabled not expected, because isDisabled true stops || execution.
         // cleanUp call is not expected
-        EasyMock.replay(cleaner);
+
         mExec.doCleanUp(mContext, mConfig, null);
-        EasyMock.verify(cleaner);
     }
 
     /**
@@ -145,16 +144,15 @@ public class InvocationExecutionTest {
     @Test
     public void testCleanUp_tearDownDisabled() throws Exception {
         DeviceConfigurationHolder holder = new DeviceConfigurationHolder("default");
-        ITargetHostCleaner cleaner = EasyMock.createMock(ITargetHostCleaner.class);
+        ITargetHostCleaner cleaner = mock(ITargetHostCleaner.class);
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
-        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
-        EasyMock.expect(cleaner.isDisabled()).andReturn(false);
-        EasyMock.expect(cleaner.isTearDownDisabled()).andReturn(true);
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
+        when(cleaner.isDisabled()).thenReturn(false);
+        when(cleaner.isTearDownDisabled()).thenReturn(true);
         // cleanUp call is not expected
-        EasyMock.replay(cleaner);
+
         mExec.doCleanUp(mContext, mConfig, null);
-        EasyMock.verify(cleaner);
     }
 
     /**

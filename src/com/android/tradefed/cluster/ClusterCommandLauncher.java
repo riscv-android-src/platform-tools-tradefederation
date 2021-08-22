@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.cluster;
 
 import com.android.annotations.VisibleForTesting;
@@ -45,8 +46,6 @@ import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
-import com.android.tradefed.util.SystemUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -75,6 +74,7 @@ public class ClusterCommandLauncher
     public static final String TF_PATH = "TF_PATH";
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
     public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
+    public static final String TF_DEVICE_COUNT = "TF_DEVICE_COUNT";
 
     private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(30);
 
@@ -153,6 +153,9 @@ public class ClusterCommandLauncher
         }
         // Add device serials to env var.
         runUtil.setEnvVariable(ANDROID_SERIALS, String.join(",", mInvocationContext.getSerials()));
+        // Add device count to env var.
+        runUtil.setEnvVariable(
+                TF_DEVICE_COUNT, String.valueOf(mInvocationContext.getDevices().size()));
 
         final File testWorkDir = new File(getEnvVar(TEST_WORK_DIR, mRootDir.getAbsolutePath()));
         final File logDir = new File(mRootDir, "logs");
@@ -318,7 +321,9 @@ public class ClusterCommandLauncher
     private List<String> buildJavaCommandArgs(String classpath, String tfCommandLine) {
         // Build a command line to invoke a TF process.
         final List<String> cmdArgs = new ArrayList<>();
-        cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+        final String javaHome = getEnvVar("JAVA_HOME", System.getProperty("java.home"));
+        final String javaPath = String.format("%s/bin/java", javaHome);
+        cmdArgs.add(javaPath);
         cmdArgs.add("-cp");
         cmdArgs.add(classpath);
         cmdArgs.addAll(mJvmOptions);
@@ -336,6 +341,7 @@ public class ClusterCommandLauncher
 
         final Integer shardCount = mConfiguration.getCommandOptions().getShardCount();
         final Integer shardIndex = mConfiguration.getCommandOptions().getShardIndex();
+
         if (shardCount != null && shardCount > 1) {
             cmdArgs.add("--shard-count");
             cmdArgs.add(Integer.toString(shardCount));

@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.binary;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -32,6 +33,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -109,6 +111,8 @@ public class ExecutableHostTest extends ExecutableBaseTest {
         if (!(getTestInfo().getDevice().getIDevice() instanceof StubDevice)) {
             runUtil.setEnvVariable(ANDROID_SERIAL, getTestInfo().getDevice().getSerialNumber());
         }
+        // Set Tradefed adb on $PATH of binary
+        AdbUtils.updateAdb(getTestInfo(), runUtil, getAdbPath());
         // Ensure its executable
         FileUtil.chmodRWXRecursively(new File(binaryPath));
 
@@ -175,6 +179,11 @@ public class ExecutableHostTest extends ExecutableBaseTest {
     @VisibleForTesting
     IRunUtil createRunUtil() {
         return new RunUtil();
+    }
+
+    @VisibleForTesting
+    String getAdbPath() {
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 
     private void logFile(File logFile, ITestLogger logger) {

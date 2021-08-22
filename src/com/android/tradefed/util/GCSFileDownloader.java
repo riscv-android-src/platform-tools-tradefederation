@@ -289,7 +289,7 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
                         .list(bucketName)
                         .setPrefix(filename)
                         .setDelimiter(PATH_SEP)
-                        .setMaxResults(1l)
+                        .setMaxResults(1L)
                         .execute();
         if (objects.getItems() != null && !objects.getItems().isEmpty()) {
             // The filename is end with '/', if there are objects use filename as prefix

@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.service;
 
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.StreamUtil;
 
@@ -46,23 +48,58 @@ public class TradefedFeatureClient implements AutoCloseable {
         mBlockingStub = TradefedInformationGrpc.newBlockingStub(mChannel);
     }
 
+    /**
+     * Request a feature to the main server to execute and return the response.
+     *
+     * @param featureName The name of the feature to trigger.
+     * @param args The args to invoke the feature.
+     * @return A {@link FeatureResponse}.
+     */
     public FeatureResponse triggerFeature(String featureName, Map<String, String> args) {
+        return triggerFeature(
+                featureName, System.getenv(TradefedFeatureServer.SERVER_REFERENCE), args);
+    }
+
+    /**
+     * Request a feature to the main server to execute and return the response.
+     *
+     * @param featureName The name of the feature to trigger.
+     * @param args The args to invoke the feature.
+     * @return A {@link FeatureResponse}.
+     */
+    private FeatureResponse triggerFeature(
+            String featureName, String invocationReference, Map<String, String> args) {
+        FeatureResponse response;
         try {
             CLog.d("invoking feature '%s'", featureName);
-            return mBlockingStub.triggerFeature(
-                    FeatureRequest.newBuilder().setName(featureName).putAllArgs(args).build());
+            FeatureRequest.Builder request =
+                    FeatureRequest.newBuilder().setName(featureName).putAllArgs(args);
+            if (invocationReference != null) {
+                request.setReferenceId(invocationReference);
+            } else if (InvocationMetricLogger.getInvocationMetrics().containsKey(InvocationMetricKey.SERVER_REFERENCE.toString())) {
+                CLog.d("Using reference id from metrics.");
+                request.setReferenceId(InvocationMetricLogger.getInvocationMetrics().get(InvocationMetricKey.SERVER_REFERENCE.toString()));
+            } else {
+                CLog.w("Reference id is null.");
+            }
+            response = mBlockingStub.triggerFeature(request.build());
         } catch (StatusRuntimeException e) {
-            return FeatureResponse.newBuilder()
-                    .setErrorInfo(
-                            ErrorInfo.newBuilder()
-                                    .setErrorTrace(StreamUtil.getStackTrace(e))
-                                    .build())
-                    .build();
+            response =
+                    FeatureResponse.newBuilder()
+                            .setErrorInfo(
+                                    ErrorInfo.newBuilder()
+                                            .setErrorTrace(StreamUtil.getStackTrace(e))
+                                            .build())
+                            .build();
         }
+        CLog.d("Feature name: %s. response: %s", featureName, response);
+        return response;
     }
 
     @Override
     public void close() {
-        mChannel.shutdown();
+        if (mChannel != null) {
+            mChannel.shutdown();
+        }
     }
 }

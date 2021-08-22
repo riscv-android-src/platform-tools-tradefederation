@@ -43,25 +43,31 @@ public final class DeviceUnavailableMonitor implements ITestInvocationListener {
 
     @Override
     public void testRunFailed(FailureDescription failure) {
-        analyzeFailure(failure);
+        if (mUnavailableException != null || mInvocationFailed) {
+            return;
+        }
+        mUnavailableException = analyzeFailure(failure);
     }
 
     @Override
     public void testFailed(TestDescription test, FailureDescription failure) {
-        analyzeFailure(failure);
+        if (mUnavailableException != null || mInvocationFailed) {
+            return;
+        }
+        mUnavailableException = analyzeFailure(failure);
     }
 
     @Override
     public void invocationFailed(FailureDescription failure) {
-        // Clear the tracking, let the invocation failure be evaluated
-        mUnavailableException = null;
         mInvocationFailed = true;
+        if (mUnavailableException != null) {
+          return;
+        }
+        mUnavailableException = analyzeFailure(failure);
     }
 
     @Override
     public void invocationFailed(Throwable cause) {
-        // Clear the tracking, let the invocation failure be evaluated
-        mUnavailableException = null;
         mInvocationFailed = true;
     }
 
@@ -70,26 +76,21 @@ public final class DeviceUnavailableMonitor implements ITestInvocationListener {
         return mUnavailableException;
     }
 
-    private void analyzeFailure(FailureDescription failure) {
-        if (mUnavailableException != null || mInvocationFailed) {
-            return;
-        }
+    private DeviceNotAvailableException analyzeFailure(FailureDescription failure) {
         if (failure.getCause() != null
                 && failure.getCause() instanceof DeviceNotAvailableException) {
-            mUnavailableException = (DeviceNotAvailableException) failure.getCause();
+            return (DeviceNotAvailableException) failure.getCause();
         } else if (failure.getFailureStatus() != null
                 && FailureStatus.LOST_SYSTEM_UNDER_TEST.equals(failure.getFailureStatus())) {
-            mUnavailableException =
-                    new DeviceNotAvailableException(failure.getErrorMessage(), mSerial);
+            return new DeviceNotAvailableException(failure.getErrorMessage(), mSerial);
         } else if (failure.getErrorIdentifier() != null) {
             if (DeviceErrorIdentifier.DEVICE_UNAVAILABLE.equals(failure.getErrorIdentifier())) {
-                mUnavailableException =
-                        new DeviceNotAvailableException(failure.getErrorMessage(), mSerial);
+                return new DeviceNotAvailableException(failure.getErrorMessage(), mSerial);
             } else if (DeviceErrorIdentifier.DEVICE_UNRESPONSIVE.equals(
                     failure.getErrorIdentifier())) {
-                mUnavailableException =
-                        new DeviceUnresponsiveException(failure.getErrorMessage(), mSerial);
+                return new DeviceUnresponsiveException(failure.getErrorMessage(), mSerial);
             }
         }
+        return null;
     }
 }

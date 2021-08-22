@@ -19,10 +19,10 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -35,21 +35,23 @@ import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Version of {@link InvocationExecution} for the parent invocation special actions when running a
  * sandbox.
  */
 public class ParentSandboxInvocationExecution extends InvocationExecution {
-
-    private IConfiguration mParentPreparerConfig = null;
 
     @Override
     public boolean fetchBuild(
@@ -68,16 +70,20 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         return super.fetchBuild(testInfo, config, rescheduler, listener);
     }
 
+    /** {@inheritDoc} */
     @Override
-    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
+    protected List<ITargetPreparer> getPreparersToRun(IConfiguration config, String deviceName) {
+        List<ITargetPreparer> preparersToRun = new ArrayList<>();
+        preparersToRun.addAll(config.getDeviceConfigByName(deviceName).getLabPreparers());
+        return preparersToRun;
+    }
+
+    @Override
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        // Skip
-        mParentPreparerConfig = getParentTargetConfig(config);
-        if (mParentPreparerConfig == null) {
-            return;
-        }
-        CLog.d("Using %s to run in the parent setup.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doSetup(testInfo, mParentPreparerConfig, logger);
+        // TODO address the situation where multi-target preparers are configured
+        // (they will be run by both the parent and sandbox if configured)
+        super.doSetup(testInfo, config, listener);
     }
 
     @Override
@@ -87,27 +93,47 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
-        // Skip
-        // If we are the parent invocation of the sandbox, setUp has been skipped since it's
-        // done in the sandbox, so tearDown should be skipped.
-        mParentPreparerConfig = getParentTargetConfig(config);
-        if (mParentPreparerConfig == null) {
-            // Log the host adb in the parent sandbox
-            logHostAdb(config, logger);
-            return;
-        }
-        CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doTeardown(testInfo, mParentPreparerConfig, logger, exception);
+        // TODO address the situation where multi-target preparers are configured
+        // (they will be run by both the parent and sandbox if configured)
+        super.doTeardown(testInfo, config, logger, exception);
     }
 
     @Override
     public void doCleanUp(IInvocationContext context, IConfiguration config, Throwable exception) {
-        // Skip
-        if (mParentPreparerConfig == null) {
-            return;
+        super.doCleanUp(context, config, exception);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void runDevicePreInvocationSetup(
+            IInvocationContext context, IConfiguration config, ITestLogger logger)
+            throws DeviceNotAvailableException, TargetSetupError {
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePreInvocationSetup(context, config, logger);
+            String commandLine = config.getCommandLine();
+            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
+                    // Turn off the gce-device option and force the serial instead to use the
+                    // started virtual device.
+                    String deviceName = (config.getDeviceConfig().size() > 1) ?
+                            String.format("{%s}", deviceConfig.getDeviceName()) : "";
+                    commandLine += String.format(" --%sno-gce-device --%sserial %s",
+                            deviceName,
+                            deviceName,
+                            context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
+                }
+            }
+            config.setCommandLine(QuotationAwareTokenizer.tokenizeLine(commandLine, false));
         }
-        CLog.d("Using %s to run in the parent clean up.", SandboxOptions.PARENT_PREPARER_CONFIG);
-        super.doCleanUp(context, mParentPreparerConfig, exception);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void runDevicePostInvocationTearDown(
+            IInvocationContext context, IConfiguration config, Throwable exception) {
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePostInvocationTearDown(context, config, exception);
+        }
     }
 
     @Override
@@ -121,11 +147,16 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         } finally {
             if (!success) {
                 String instanceName = null;
+                // hostname is only needed for Oxygen cuttlefish cleanup.
+                String hostname = null;
                 boolean cleaned = false;
                 for (IBuildInfo build : info.getContext().getBuildInfos()) {
                     if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY) != null) {
                         instanceName =
                                 build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY);
+                    }
+                    if (build.getBuildAttributes().get(GceManager.GCE_HOSTNAME_KEY) != null) {
+                        hostname = build.getBuildAttributes().get(GceManager.GCE_HOSTNAME_KEY);
                     }
                     if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_CLEANED_KEY)
                             != null) {
@@ -136,7 +167,10 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
                     // TODO: Handle other devices if needed.
                     TestDeviceOptions options = config.getDeviceConfig().get(0).getDeviceOptions();
                     CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
-                    boolean res = GceManager.AcloudShutdown(options, getRunUtil(), instanceName);
+
+                    boolean res =
+                            GceManager.AcloudShutdown(
+                                    options, getRunUtil(), instanceName, hostname);
                     if (res) {
                         info.getBuildInfo()
                                 .addBuildAttribute(GceManager.GCE_INSTANCE_CLEANED_KEY, "true");
@@ -149,7 +183,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     @Override
     public void reportLogs(ITestDevice device, ITestLogger logger, Stage stage) {
         // If it's not a major error we do not report it if no setup or teardown ran.
-        if (mParentPreparerConfig == null || !Stage.ERROR.equals(stage)) {
+        if (!Stage.ERROR.equals(stage)) {
             return;
         }
         super.reportLogs(device, logger, stage);
@@ -174,28 +208,16 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         return SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
-    private IConfiguration getParentTargetConfig(IConfiguration config) throws TargetSetupError {
-        if (mParentPreparerConfig != null) {
-            return mParentPreparerConfig;
-        }
+    /**
+     * Whether or not to run the device pre invocation setup or not.
+     */
+    private boolean shouldRunDeviceSpecificSetup(IConfiguration config) {
         SandboxOptions options =
                 (SandboxOptions)
                         config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
-        if (options != null && options.getParentPreparerConfig() != null) {
-            try {
-                return getFactory()
-                        .createConfigurationFromArgs(
-                                new String[] {options.getParentPreparerConfig()});
-            } catch (ConfigurationException e) {
-                String message =
-                        String.format(
-                                "Check your --%s option: %s",
-                                SandboxOptions.PARENT_PREPARER_CONFIG, e.getMessage());
-                CLog.e(message);
-                CLog.e(e);
-                throw new TargetSetupError(message, e, InfraErrorIdentifier.UNDETERMINED);
-            }
+        if (options != null && options.startAvdInParent()) {
+            return true;
         }
-        return null;
+        return false;
     }
 }

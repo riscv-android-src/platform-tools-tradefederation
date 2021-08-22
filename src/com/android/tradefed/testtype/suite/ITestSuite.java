@@ -41,6 +41,8 @@ import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -58,7 +60,6 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
-import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -74,18 +75,15 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
-import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
-import com.proto.tradefed.feature.FeatureResponse;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -314,16 +312,6 @@ public abstract class ITestSuite
     /** @deprecated to be deleted when next version is deployed */
     @Deprecated
     @Option(
-        name = "max-testcase-run-count",
-        description =
-                "If the IRemoteTest can have its testcases run multiple times, "
-                        + "the max number of runs for each testcase."
-    )
-    private int mMaxRunLimit = 1;
-
-    /** @deprecated to be deleted when next version is deployed */
-    @Deprecated
-    @Option(
         name = "retry-strategy",
         description =
                 "The retry strategy to be used when re-running some tests with "
@@ -338,11 +326,6 @@ public abstract class ITestSuite
     )
     private boolean mMergeAttempts = true;
     // end [Options relate to module retry and intra-module retry]
-
-    @Option(
-            name = "filter-previous-passed",
-            description = "Feature flag to test filtering previously passed tests.")
-    private boolean mTestFilterPassed = false;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -712,37 +695,12 @@ public abstract class ITestSuite
                     mRunModules);
         }
 
-        List<SuiteTestFilter> previousPassedFilters = new ArrayList<>();
-        if (mTestFilterPassed) {
-            // Test the query of previous passed test
-            Map<String, String> args = new HashMap<>();
-            String invocationId =
-                    mMainConfiguration
-                            .getCommandOptions()
-                            .getInvocationData()
-                            .getUniqueMap()
-                            .get("invocation_id");
-            if (!Strings.isNullOrEmpty(invocationId)) {
-                args.put("invocation_id", invocationId);
-            }
-            // TODO: Only do this if it's not the first attempt
-            if (!args.isEmpty()) {
-                try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-                    FeatureResponse previousPassed = triggerFeature(client, args);
-                    CLog.d("FeatureResponse: %s", previousPassed);
-                    convertResponseToFilter(previousPassed, previousPassedFilters);
-                } catch (RuntimeException e) {
-                    CLog.e(e);
-                }
-            }
-        }
-
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
             while (!mRunModules.isEmpty()) {
                 ModuleDefinition module = mRunModules.remove(0);
 
-                if (!shouldModuleRun(module, previousPassedFilters)) {
+                if (!shouldModuleRun(module)) {
                     continue;
                 }
                 // Before running the module we ensure it has tests at this point or skip completely
@@ -757,6 +715,14 @@ public abstract class ITestSuite
                             .addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
                     module.getModuleInvocationContext()
                             .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
+                }
+                // Add isolation status before module start for reporting
+                if (!IsolationGrade.NOT_ISOLATED.equals(
+                        CurrentInvocation.moduleCurrentIsolation())) {
+                    module.getModuleInvocationContext()
+                            .addInvocationAttribute(
+                                    ModuleDefinition.MODULE_ISOLATED,
+                                    CurrentInvocation.moduleCurrentIsolation().toString());
                 }
                 listener.testModuleStarted(module.getModuleInvocationContext());
                 mModuleInProgress = module;
@@ -775,6 +741,8 @@ public abstract class ITestSuite
                     // execution
                     listener.testModuleEnded();
                     mModuleInProgress = null;
+                    // Following modules will not be isolated if no action is taken
+                    CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
                 }
                 // Module isolation routine
                 moduleIsolation(mContext, listener);
@@ -875,6 +843,10 @@ public abstract class ITestSuite
         module.setMergeAttemps(mMergeAttempts);
         // Pass the retry decision to be used.
         module.setRetryDecision(decision);
+        // Restore the config, as the setter might have override it with module config.
+        if (decision instanceof IConfigurationReceiver) {
+            ((IConfigurationReceiver) decision).setConfiguration(mMainConfiguration);
+        }
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
         module.transferSuiteLevelOptions(mMainConfiguration);
@@ -1214,7 +1186,7 @@ public abstract class ITestSuite
                     TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));
             return mDirectModule.getRuntimeHint();
         }
-        return 0l;
+        return 0L;
     }
 
     /** {@inheritDoc} */
@@ -1539,51 +1511,7 @@ public abstract class ITestSuite
         mAbis.addAll(abis);
     }
 
-    @VisibleForTesting
-    FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
-        return client.triggerFeature("getPreviousPassed", args);
-    }
-
-    private void convertResponseToFilter(
-            FeatureResponse previousPassed, List<SuiteTestFilter> previousPassedFilters) {
-        if (previousPassed.hasErrorInfo()) {
-            return;
-        }
-        if (Strings.isNullOrEmpty(previousPassed.getResponse())) {
-            return;
-        }
-        for (String line : previousPassed.getResponse().split("\n")) {
-            if (line.isEmpty()) {
-                continue;
-            }
-            previousPassedFilters.add(SuiteTestFilter.createFrom(line));
-        }
-    }
-
-    private boolean shouldModuleRun(
-            ModuleDefinition module, List<SuiteTestFilter> previousPassedFilter) {
-        if (previousPassedFilter.isEmpty()) {
-            return true;
-        }
-        String moduleId = module.getId();
-        for (SuiteTestFilter filter : previousPassedFilter) {
-            String name = filter.getName();
-            if (filter.getAbi() != null) {
-                name = filter.getAbi() + " " + name;
-            }
-            if (!name.equals(moduleId)) {
-                continue;
-            }
-            if (filter.getTest() == null) {
-                CLog.d("Skipping %s, it previously passed.", moduleId);
-                return false;
-            }
-            for (IRemoteTest test : module.getTests()) {
-                if (test instanceof ITestFilterReceiver) {
-                    ((ITestFilterReceiver) test).addExcludeFilter(filter.getTest());
-                }
-            }
-        }
+    protected boolean shouldModuleRun(ModuleDefinition module) {
         return true;
     }
 }

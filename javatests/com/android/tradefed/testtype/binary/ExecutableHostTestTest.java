@@ -36,8 +36,8 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -76,6 +76,10 @@ public class ExecutableHostTestTest {
                     @Override
                     IRunUtil createRunUtil() {
                         return mMockRunUtil;
+                    }
+                    @Override
+                    String getAdbPath() {
+                        return "adb";
                     }
                 };
         InvocationContext context = new InvocationContext();

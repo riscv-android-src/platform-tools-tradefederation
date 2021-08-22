@@ -16,18 +16,22 @@
 package com.android.tradefed.result;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
@@ -35,13 +39,12 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class LogcatCrashResultForwarderTest {
     private LogcatCrashResultForwarder mReporter;
-    private ITestInvocationListener mMockListener;
-    private ITestDevice mMockDevice;
+    @Mock ITestInvocationListener mMockListener;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
     }
 
     /** Test if a crash is detected but no crash is found in the logcat. */
@@ -51,20 +54,21 @@ public class LogcatCrashResultForwarderTest {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
-        mMockListener.testStarted(test, 0L);
-        EasyMock.expect(mMockDevice.getLogcatSince(0L))
-                .andReturn(new ByteArrayInputStreamSource("".getBytes()));
-        mMockListener.testFailed(
-                test,
-                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'")
-                        .setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
+        when(mMockDevice.getLogcatSince(0L))
+                .thenReturn(new ByteArrayInputStreamSource("".getBytes()));
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        verify(mMockListener)
+                .testFailed(
+                        test,
+                        FailureDescription.create(
+                                        "instrumentation failed. reason: 'Process crashed.'")
+                                .setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH));
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
     }
 
     /**
@@ -77,7 +81,6 @@ public class LogcatCrashResultForwarderTest {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
-        mMockListener.testStarted(test, 0L);
         String logcat =
                 "03-20 09:57:36.709 11 11 E AndroidRuntime: FATAL EXCEPTION: Thread-2\n"
                         + "03-20 09:57:36.709 11 11 E AndroidRuntime: Process: android.gesture.cts"
@@ -91,29 +94,32 @@ public class LogcatCrashResultForwarderTest {
                         + "03-20 09:57:36.711 11 11 I TestRunner: started: testGetStrokesCount"
                         + "(android.gesture.cts.GestureTest)\n";
 
-        EasyMock.expect(mMockDevice.getLogcatSince(0L))
-                .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
-        // Some crash was added to the failure
-        Capture<FailureDescription> captured_1 = new Capture<>();
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured_1));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
-        // If a run failure follows, expect it to contain the additional stack too.
-        Capture<FailureDescription> captured_2 = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(captured_2));
+        when(mMockDevice.getLogcatSince(0L))
+                .thenReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         mReporter.testRunFailed("Something went wrong.");
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        // Some crash was added to the failure
+        ArgumentCaptor<FailureDescription> captured_1 =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testFailed(Mockito.eq(test), captured_1.capture());
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
+        // If a run failure follows, expect it to contain the additional stack too.
+        ArgumentCaptor<FailureDescription> captured_2 =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captured_2.capture());
         assertTrue(
                 captured_1
                         .getValue()
                         .getErrorMessage()
                         .contains(
-                                "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Messages sorted from most recent:\nRuntime"));
+                                "instrumentation failed. reason: 'Process crashed.'\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
+                                        + "Runtime"));
         assertTrue(
                 FailureStatus.SYSTEM_UNDER_TEST_CRASHED.equals(
                         captured_1.getValue().getFailureStatus()));
@@ -123,7 +129,7 @@ public class LogcatCrashResultForwarderTest {
                         .getErrorMessage()
                         .contains(
                                 "Something went wrong.\n"
-                                        + "Crash Messages sorted from most recent:\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
                                         + "Runtime"));
     }
 
@@ -137,7 +143,6 @@ public class LogcatCrashResultForwarderTest {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
-        mMockListener.testStarted(test, 0L);
         String logcat =
                 "03-20 09:57:36.709 11 11 E AndroidRuntime: FATAL EXCEPTION: Thread-2\n"
                         + "03-20 09:57:36.709 11 11 E AndroidRuntime: Process: android.gesture.cts"
@@ -151,27 +156,29 @@ public class LogcatCrashResultForwarderTest {
                         + "03-20 09:57:36.711 11 11 I TestRunner: started: testGetStrokesCount"
                         + "(android.gesture.cts.GestureTest)\n";
 
-        EasyMock.expect(mMockDevice.getLogcatSince(0L))
-                .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
-        // No crash added at the point of testFailed.
-        mMockListener.testFailed(test, FailureDescription.create("Something went wrong."));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
-        // If a run failure comes with a crash detected, expect it to contain the additional stack.
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(captured));
+        when(mMockDevice.getLogcatSince(0L))
+                .thenReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "Something went wrong.");
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         mReporter.testRunFailed("instrumentation failed. reason: 'Process crashed.'");
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        // No crash added at the point of testFailed.
+        verify(mMockListener).testFailed(test, FailureDescription.create("Something went wrong."));
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
+        // If a run failure comes with a crash detected, expect it to contain the additional stack.
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captured.capture());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
                         .contains(
-                                "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Messages sorted from most recent:\nRuntime"));
+                                "instrumentation failed. reason: 'Process crashed.'\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
+                                        + "Runtime"));
     }
 
     /**
@@ -183,8 +190,6 @@ public class LogcatCrashResultForwarderTest {
     public void testCaptureTestCrash_duplicateStack() {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
-
-        mMockListener.testStarted(test, 0L);
 
         String logcat =
                 "04-25 09:55:47.799  wifi  64  82 E AndroidRuntime: java.lang.Exception: test\n"
@@ -199,30 +204,31 @@ public class LogcatCrashResultForwarderTest {
                         + "04-25 09:55:47.799  wifi  65  90 E AndroidRuntime: "
                         + "\tat class.method2(Class.java:2)\n";
 
-        EasyMock.expect(mMockDevice.getLogcatSince(0L))
-                .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
-        // No crash added at the point of testFailed.
-        mMockListener.testFailed(test, FailureDescription.create("Something went wrong."));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
-        // If a run failure comes with a crash detected, expect it to contain the additional stack.
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(captured));
+        when(mMockDevice.getLogcatSince(0L))
+                .thenReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, "Something went wrong.");
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
         mReporter.testRunFailed("instrumentation failed. reason: 'Process crashed.'");
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        // No crash added at the point of testFailed.
+        verify(mMockListener).testFailed(test, FailureDescription.create("Something went wrong."));
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
+        // If a run failure comes with a crash detected, expect it to contain the additional stack.
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captured.capture());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
                         .contains(
                                 "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Messages sorted from most recent:\ntest"
+                                        + "\nJava Crash Messages sorted from most recent:\ntest"
                                         + "\njava.lang.Exception: test\n"
                                         + "\tat class.method1(Class.java:1)\n"
-                                        + "\tat class.method2(Class.java:2)\n"));
+                                        + "\tat class.method2(Class.java:2)"));
     }
 
     /** Test that test-timeout tests have failure status TIMED_OUT. */
@@ -235,17 +241,16 @@ public class LogcatCrashResultForwarderTest {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
-        mMockListener.testStarted(test, 0L);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
 
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
-
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, trace);
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        verify(mMockListener).testFailed(Mockito.eq(test), captured.capture());
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
         assertTrue(captured.getValue().getErrorMessage().contains(trace));
         assertTrue(FailureStatus.TIMED_OUT.equals(captured.getValue().getFailureStatus()));
     }
@@ -262,17 +267,16 @@ public class LogcatCrashResultForwarderTest {
         mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
         TestDescription test = new TestDescription("com.class", "test");
 
-        mMockListener.testStarted(test, 0L);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
 
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured));
-        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
-
-        EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
         mReporter.testFailed(test, trace);
         mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice);
+
+        verify(mMockListener).testStarted(test, 0L);
+        verify(mMockListener).testFailed(Mockito.eq(test), captured.capture());
+        verify(mMockListener).testEnded(test, 5L, new HashMap<String, Metric>());
         assertTrue(captured.getValue().getErrorMessage().contains(trace));
         assertTrue(FailureStatus.TIMED_OUT.equals(captured.getValue().getFailureStatus()));
     }

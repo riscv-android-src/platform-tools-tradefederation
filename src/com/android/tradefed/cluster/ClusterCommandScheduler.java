@@ -34,6 +34,7 @@ import com.android.tradefed.device.battery.BatteryController;
 import com.android.tradefed.device.battery.IBatteryInfo;
 import com.android.tradefed.device.battery.IBatteryInfo.BatteryState;
 import com.android.tradefed.error.IHarnessException;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -579,10 +580,45 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
         boolean checkFlashingPermitsLease = options.checkFlashingPermitsOnLease();
         if (checkFlashingPermitsLease) {
-            availableFlashingPermits = getDeviceManager().getAvailableFlashingPermits();
+            availableFlashingPermits = getHostOptions()
+                    .getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER);
             CLog.i("available flasher permits %d", availableFlashingPermits);
         }
         return availableFlashingPermits;
+    }
+
+    private boolean arePermitsAvailableToSchedule() {
+        if (!getClusterOptions().checkPermitsOnLease()) {
+            return true;
+        }
+        for (PermitLimitType permit : PermitLimitType.values()) {
+            if (getClusterOptions().checkFlashingPermitsOnLease()
+                    && PermitLimitType.CONCURRENT_FLASHER.equals(permit)) {
+                // Already checked by dedicated flashing logic
+                continue;
+            }
+            if (getHostOptions().getAvailablePermits(permit) <= 0) {
+                CLog.i("There is no available '%s' permits. Not leasing any additional commands.",
+                        permit);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean checkDiskSpace() {
+        if (getClusterOptions().maxDiskUsagePercentage() == 100L) {
+            return true;
+        }
+        File rootPartition = new File("/");
+        long freeSpace =
+            (long) (rootPartition.getUsableSpace() * 100.0) / rootPartition.getTotalSpace();
+        long usage = 100L - freeSpace;
+        if (usage > getClusterOptions().maxDiskUsagePercentage()) {
+            CLog.i("Disk space utilization is '%s%%'. Stop leasing.", usage);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -598,6 +634,13 @@ public class ClusterCommandScheduler extends CommandScheduler {
         // Don't try to lease if there are no flasher permits available
         if (availableFlashingPermits == 0) {
             CLog.i("There is no available flashing permits. Not lease any additional commands.");
+            return Collections.<ClusterCommand>emptyList();
+        }
+        if (!arePermitsAvailableToSchedule()) {
+            return Collections.<ClusterCommand>emptyList();
+        }
+        // Check disk space before scheduling
+        if (!checkDiskSpace()) {
             return Collections.<ClusterCommand>emptyList();
         }
 

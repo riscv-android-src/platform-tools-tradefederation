@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * An {@link ITargetPreparer} that sets up a system image on top of a device build with the Dynamic
@@ -194,11 +195,11 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
         }
         ITestDevice device = testInfo.getDevice();
         // Disable the DynamicSystemUpdate installation
-        device.executeShellCommand("gsi_tool disable");
+        device.executeShellV2Command("gsi_tool disable", 2, TimeUnit.MINUTES, 0);
         // Enable the one-shot mode when DynamicSystemUpdate is disabled
-        device.executeShellCommand("gsi_tool enable -s");
+        device.executeShellV2Command("gsi_tool enable -s", 2, TimeUnit.MINUTES, 0);
         // Disable the DynamicSystemUpdate installation
-        device.executeShellCommand("gsi_tool disable");
+        device.executeShellV2Command("gsi_tool disable", 2, TimeUnit.MINUTES, 0);
         // Reboot into the original system image
         device.reboot();
     }

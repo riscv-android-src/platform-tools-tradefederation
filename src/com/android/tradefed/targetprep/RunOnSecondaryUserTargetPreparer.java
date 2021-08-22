@@ -57,6 +57,9 @@ public class RunOnSecondaryUserTargetPreparer extends BaseTargetPreparer
 
     private IConfiguration mConfiguration;
 
+    private int userIdToDelete = -1;
+    private int originalUserId;
+
     @Option(
             name = TEST_PACKAGE_NAME_OPTION,
             description =
@@ -78,10 +81,7 @@ public class RunOnSecondaryUserTargetPreparer extends BaseTargetPreparer
             throws TargetSetupError, DeviceNotAvailableException {
         int secondaryUserId = getSecondaryUserId(testInfo.getDevice());
 
-        if (secondaryUserId != -1) {
-            // There is already a secondary user - so we don't want to remove it
-            setDisableTearDown(true);
-        } else {
+        if (secondaryUserId == -1) {
             if (!assumeTrue(
                     canCreateAdditionalUsers(testInfo.getDevice(), 1),
                     "Device cannot support additional users",
@@ -90,6 +90,18 @@ public class RunOnSecondaryUserTargetPreparer extends BaseTargetPreparer
             }
 
             secondaryUserId = createSecondaryUser(testInfo.getDevice());
+            userIdToDelete = secondaryUserId;
+        }
+
+        // The wait flag is only supported on Android 29+
+        testInfo.getDevice()
+                .startUser(
+                        secondaryUserId, /* waitFlag= */ testInfo.getDevice().getApiLevel() >= 29);
+
+        originalUserId = testInfo.getDevice().getCurrentUser();
+
+        if (originalUserId != secondaryUserId) {
+            testInfo.getDevice().switchUser(secondaryUserId);
         }
 
         for (String pkg : mTestPackages) {
@@ -113,17 +125,19 @@ public class RunOnSecondaryUserTargetPreparer extends BaseTargetPreparer
 
     /** Creates a secondary user and returns the new user ID. */
     private static int createSecondaryUser(ITestDevice device) throws DeviceNotAvailableException {
-        final String createUserOutput = device.executeShellCommand("pm create-user secondary");
-        final int userId = Integer.parseInt(createUserOutput.split(" id ")[1].trim());
-        device.executeShellCommand("am start-user -w " + userId);
-        return userId;
+        return device.createUser("secondary");
     }
 
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
-        int userId = Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY));
         testInfo.properties().remove(RUN_TESTS_AS_USER_KEY);
-        testInfo.getDevice().removeUser(userId);
+        int currentUser = testInfo.getDevice().getCurrentUser();
+        if (currentUser != originalUserId) {
+            testInfo.getDevice().switchUser(originalUserId);
+        }
+        if (userIdToDelete != -1) {
+            testInfo.getDevice().removeUser(userIdToDelete);
+        }
     }
 
     /**

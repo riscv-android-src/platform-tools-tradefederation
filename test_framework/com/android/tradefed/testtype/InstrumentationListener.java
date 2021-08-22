@@ -17,20 +17,24 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.ProcessInfo;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -65,6 +69,13 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
         mExpectedTests = expectedTests;
     }
 
+    public void addListener(ITestInvocationListener listener) {
+        List<ITestInvocationListener> listeners = new ArrayList<>();
+        listeners.addAll(getListeners());
+        listeners.add(listener);
+        setListeners(listeners);
+    }
+
     /** Whether or not to disable the duplicate test method check. */
     public void setDisableDuplicateCheck(boolean disable) {
         mDisableDuplicateCheck = disable;
@@ -82,7 +93,7 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
     public void testRunStarted(String runName, int testCount) {
         runLevelError = null;
         // In case of crash, run will attempt to report with 0
-        if (testCount == 0 && !mExpectedTests.isEmpty()) {
+        if (testCount == 0 && mExpectedTests != null && !mExpectedTests.isEmpty()) {
             CLog.e("Run reported 0 tests while we collected %s", mExpectedTests.size());
             super.testRunStarted(runName, mExpectedTests.size());
         } else {
@@ -101,13 +112,16 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
     @Override
     public void testRunFailed(FailureDescription error) {
         if (error.getErrorMessage().startsWith(DDMLIB_INSTRU_FAILURE_MSG)) {
-            Set<TestDescription> expected = new LinkedHashSet<>(mExpectedTests);
-            expected.removeAll(mTests);
-            String helpMessage = String.format("The following tests didn't run: %s", expected);
-            error.setDebugHelpMessage(helpMessage);
+            if (mExpectedTests != null) {
+                Set<TestDescription> expected = new LinkedHashSet<>(mExpectedTests);
+                expected.removeAll(mTests);
+                String helpMessage = String.format("The following tests didn't run: %s", expected);
+                error.setDebugHelpMessage(helpMessage);
+            }
             error.setFailureStatus(FailureStatus.TEST_FAILURE);
+            String wrapMessage = error.getErrorMessage();
+            boolean restarted = false;
             if (mSystemServerProcess != null) {
-                boolean restarted = false;
                 try {
                     restarted = getDevice().deviceSoftRestarted(mSystemServerProcess);
                 } catch (DeviceNotAvailableException e) {
@@ -115,8 +129,22 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
                 }
                 if (restarted) {
                     error.setFailureStatus(FailureStatus.SYSTEM_UNDER_TEST_CRASHED);
+                    error.setErrorIdentifier(DeviceErrorIdentifier.DEVICE_CRASHED);
+                    wrapMessage =
+                            String.format(
+                                    "Detected system_server restart causing instrumentation error:"
+                                            + " %s",
+                                    error.getErrorMessage());
                 }
             }
+            if (!restarted && !TestDeviceState.ONLINE.equals(getDevice().getDeviceState())) {
+                error.setErrorIdentifier(DeviceErrorIdentifier.ADB_DISCONNECT);
+                wrapMessage =
+                        String.format(
+                                "Detected device offline causing instrumentation error: %s",
+                                error.getErrorMessage());
+            }
+            error.setErrorMessage(wrapMessage);
         } else if (error.getErrorMessage().startsWith(DDMLIB_SHELL_UNRESPONSIVE)) {
             String wrapMessage =
                     String.format(
@@ -144,7 +172,9 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
                                     mDuplicateTests));
             error.setFailureStatus(FailureStatus.TEST_FAILURE);
             super.testRunFailed(error);
-        } else if (mReportUnexecutedTests && mExpectedTests.size() > mTests.size()) {
+        } else if (mReportUnexecutedTests
+                && mExpectedTests != null
+                && mExpectedTests.size() > mTests.size()) {
             Set<TestDescription> missingTests = new LinkedHashSet<>(mExpectedTests);
             missingTests.removeAll(mTests);
             for (TestDescription miss : missingTests) {

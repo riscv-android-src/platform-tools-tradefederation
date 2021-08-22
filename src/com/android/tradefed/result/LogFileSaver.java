@@ -21,6 +21,8 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.base.Strings;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -216,8 +218,13 @@ public class LogFileSaver {
         if (mInvLogDir != null && !mInvLogDir.exists()) {
             mInvLogDir.mkdirs();
         }
+        // Maintain the file original extension, if none backfill it.
+        String extension = FileUtil.getExtension(saneDataName);
+        if (Strings.isNullOrEmpty(extension)) {
+            extension = "." + ext;
+        }
         // add underscore to end of data name to make generated name more readable
-        File logFile = FileUtil.createTempFile(saneDataName + "_", "." + ext,
+        File logFile = FileUtil.createTempFile(saneDataName + "_", extension,
                 mInvLogDir);
         FileUtil.writeToFile(dataStream, logFile);
         CLog.i("Saved log file %s", logFile.getAbsolutePath());

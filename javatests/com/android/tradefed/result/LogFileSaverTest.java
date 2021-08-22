@@ -16,14 +16,20 @@
 
 package com.android.tradefed.result;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import junit.framework.TestCase;
-
 import org.easymock.EasyMock;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -44,25 +50,25 @@ import java.util.zip.ZipFile;
 /**
  * Unit tests for {@link LogFileSaver}.
  */
-public class LogFileSaverTest extends TestCase {
+@RunWith(JUnit4.class)
+public class LogFileSaverTest {
 
     private File mRootDir;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mRootDir = FileUtil.createTempDir("tmpdir");
     }
 
-    @Override
-    protected void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         FileUtil.recursiveDelete(mRootDir);
-        super.tearDown();
     }
 
     /**
      * Test that a unique directory is created
      */
+    @Test
     public void testGetFileDir() {
         final String buildId = "88888";
         final String branch = "somebranch";
@@ -99,6 +105,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Test that a unique directory is created when no branch is specified
      */
+    @Test
     public void testGetFileDir_nobranch() {
         final String buildId = "88888";
         final String testtag = "sometest";
@@ -122,6 +129,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Test that retention file creation
      */
+    @Test
     @SuppressWarnings("deprecation")
     public void testGetFileDir_retention() throws IOException, ParseException {
         final String buildId = "88888";
@@ -147,6 +155,7 @@ public class LogFileSaverTest extends TestCase {
      * Simple normal case test for
      * {@link LogFileSaver#saveLogData(String, LogDataType, InputStream)}.
      */
+    @Test
     public void testSaveLogData() throws IOException {
         File logFile = null;
         BufferedReader logFileReader = null;
@@ -174,6 +183,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Simple normal case test for {@link LogFileSaver#saveAndGZipLogData}.
      */
+    @Test
     public void testSaveAndGZipLogData() throws IOException {
         File logFile = null;
         GZIPInputStream gzipStream = null;
@@ -198,6 +208,7 @@ public class LogFileSaverTest extends TestCase {
     /**
      * Simple normal case test for {@link LogFileSaver#saveAndZipLogData}.
      */
+    @Test
     public void testSaveAndZipLogData() throws IOException {
         File logFile = null;
         ZipFile zipFile = null;
@@ -227,6 +238,7 @@ public class LogFileSaverTest extends TestCase {
      * Simple normal case test for {@link LogFileSaver#createCompressedLogFile} and
      * {@link LogFileSaver#createGZipLogStream(File)}
      */
+    @Test
     public void testCreateAndGZipLogData() throws IOException {
         File logFile = null;
         OutputStream gzipOutStream = null;
@@ -257,6 +269,7 @@ public class LogFileSaverTest extends TestCase {
         }
     }
 
+    @Test
     public void testSaveLogDataRaw() throws Exception {
         File logFile = null;
         BufferedReader logFileReader = null;
@@ -272,6 +285,27 @@ public class LogFileSaverTest extends TestCase {
             logFileReader = new BufferedReader(new FileReader(logFile));
             String actualLogString = logFileReader.readLine().trim();
             assertEquals(actualLogString, testData);
+            assertEquals(".txt", FileUtil.getExtension(
+                    new File(logFile.getAbsolutePath()).getName()));
+        } finally {
+            StreamUtil.close(logFileReader);
+            FileUtil.deleteFile(logFile);
+        }
+    }
+
+    @Test
+    public void testSaveLogDataRaw_png() throws Exception {
+        File logFile = null;
+        BufferedReader logFileReader = null;
+        try {
+            LogFileSaver saver = new LogFileSaver(new BuildInfo(), mRootDir);
+            final String testData = "screenshot";
+            ByteArrayInputStream mockInput = new ByteArrayInputStream(testData.getBytes());
+            logFile = saver.saveLogDataRaw(
+                    "screenshot-on-failure", LogDataType.PNG.getFileExt(), mockInput);
+
+            assertEquals(".png", FileUtil.getExtension(
+                    new File(logFile.getAbsolutePath()).getName()));
         } finally {
             StreamUtil.close(logFileReader);
             FileUtil.deleteFile(logFile);

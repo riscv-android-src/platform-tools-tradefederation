@@ -21,9 +21,9 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.MetricUtility;
 
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.math.Quantiles;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,22 +55,8 @@ public class AggregatePostProcessor extends BasePostProcessor {
                             + "range. Can be repeated.")
     private Set<Integer> mPercentiles = new HashSet<>();
 
-    private static final String STATS_KEY_MIN = "min";
-    private static final String STATS_KEY_MAX = "max";
-    private static final String STATS_KEY_MEAN = "mean";
-    private static final String STATS_KEY_VAR = "var";
-    private static final String STATS_KEY_STDEV = "stdev";
-    private static final String STATS_KEY_MEDIAN = "median";
-    private static final String STATS_KEY_TOTAL = "total";
-    private static final String STATS_KEY_COUNT = "metric-count";
-    private static final String STATS_KEY_PERCENTILE_PREFIX = "p";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
-
-    // Actual percentiles to calculate, which includes the 50th percentile for median. Guava's
-    // definition of percentiles agrees with the general interpretation of median. Initialized
-    // lazily.
-    private Set<Integer> mActualPercentiles = new HashSet<>();
 
     // Stores the test metrics for aggregation by test description.
     // TODO(b/118708851): Remove this workaround once AnTS is ready.
@@ -121,7 +107,7 @@ public class AggregatePostProcessor extends BasePostProcessor {
             if (rawValues.isEmpty()) {
                 continue;
             }
-            if (isAllDoubleValues(rawValues)) {
+            if (MetricUtility.isAllDoubleValues(rawValues)) {
                 buildStats(metricKey, rawValues, aggregateMetrics);
             }
         }
@@ -138,31 +124,11 @@ public class AggregatePostProcessor extends BasePostProcessor {
             String values = entry.getValue().getMeasurements().getSingleString();
             List<String> splitVals = Arrays.asList(values.split(",", 0));
             // Build stats for keys with any values, even only one.
-            if (isAllDoubleValues(splitVals)) {
+            if (MetricUtility.isAllDoubleValues(splitVals)) {
                 buildStats(entry.getKey(), splitVals, aggregateMetrics);
             }
         }
         return aggregateMetrics;
-    }
-
-    /**
-     * Return true is all the values can be parsed to double value.
-     * Otherwise return false.
-     * @param rawValues list whose values are validated.
-     * @return
-     */
-    private boolean isAllDoubleValues(List<String> rawValues) {
-        return rawValues
-                .stream()
-                .allMatch(
-                        val -> {
-                            try {
-                                Double.parseDouble(val);
-                                return true;
-                            } catch (NumberFormatException e) {
-                                return false;
-                            }
-                        });
     }
 
     /**
@@ -175,9 +141,9 @@ public class AggregatePostProcessor extends BasePostProcessor {
      */
     private void buildStats(String metricKey, List<String> values,
             Map<String, Metric.Builder> aggregateMetrics) {
-        List<Double> doubleValues =
-                values.stream().map(Double::parseDouble).collect(Collectors.toList());
-        HashMap<String, Double> stats = getStats(doubleValues);
+        List<Double> doubleValues = values.stream().map(Double::parseDouble)
+                .collect(Collectors.toList());
+        Map<String, Double> stats = MetricUtility.getStats(doubleValues, mPercentiles);
         for (String statKey : stats.keySet()) {
             Metric.Builder metricBuilder = Metric.newBuilder();
             metricBuilder
@@ -187,55 +153,5 @@ public class AggregatePostProcessor extends BasePostProcessor {
                     String.join(STATS_KEY_SEPARATOR, metricKey, statKey),
                     metricBuilder);
         }
-    }
-
-    private HashMap<String, Double> getStats(Collection<Double> values) {
-        HashMap<String, Double> stats = new HashMap<>();
-        double sum = values.stream().mapToDouble(Double::doubleValue).sum();
-        double count = (double) values.size();
-        // The orElse situation should never happen.
-        double mean =
-                values.stream()
-                        .mapToDouble(Double::doubleValue)
-                        .average()
-                        .orElseThrow(IllegalStateException::new);
-        double variance = values.stream().reduce(0.0, (a, b) -> a + Math.pow(b - mean, 2) / count);
-        // Calculate percentiles. Median will be calculated as the 50th percentile.
-        Map<Integer, Double> percentiles =
-                Quantiles.percentiles().indexes(getActualPercentiles()).compute(values);
-        double median = percentiles.get(50);
-
-        stats.put(STATS_KEY_MIN, Collections.min(values));
-        stats.put(STATS_KEY_MAX, Collections.max(values));
-        stats.put(STATS_KEY_MEAN, mean);
-        stats.put(STATS_KEY_VAR, variance);
-        stats.put(STATS_KEY_STDEV, Math.sqrt(variance));
-        stats.put(STATS_KEY_MEDIAN, median);
-        stats.put(STATS_KEY_TOTAL, sum);
-        stats.put(STATS_KEY_COUNT, count);
-        percentiles
-                .entrySet()
-                .stream()
-                .forEach(
-                        e -> {
-                            // If the percentile is 50, only include it if the user asks for it
-                            // explicitly.
-                            if (e.getKey() != 50 || mPercentiles.contains(50)) {
-                                stats.put(
-                                        STATS_KEY_PERCENTILE_PREFIX + e.getKey().toString(),
-                                        e.getValue());
-                            }
-                        });
-        return stats;
-    }
-
-    private Set<Integer> getActualPercentiles() {
-        if (mActualPercentiles.isEmpty()) {
-            // Empty means the set has not been initialized, since an initialized set will include
-            // at least 50.
-            mActualPercentiles.addAll(mPercentiles);
-            mActualPercentiles.add(50);
-        }
-        return mActualPercentiles;
     }
 }
