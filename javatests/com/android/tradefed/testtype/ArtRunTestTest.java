@@ -17,6 +17,10 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
@@ -32,27 +36,27 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
-import org.easymock.EasyMock;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
 /** Unit tests for {@link ArtRunTest}. */
 @RunWith(JUnit4.class)
 public class ArtRunTestTest {
 
-    private ITestInvocationListener mMockInvocationListener;
-    private IAbi mMockAbi;
-    private ITestDevice mMockITestDevice;
+    @Mock ITestInvocationListener mMockInvocationListener;
+    @Mock IAbi mMockAbi;
+    @Mock ITestDevice mMockITestDevice;
 
     private ArtRunTest mArtRunTest;
     private OptionSetter mSetter;
@@ -66,9 +70,9 @@ public class ArtRunTestTest {
 
     @Before
     public void setUp() throws ConfigurationException, IOException {
-        mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockAbi = EasyMock.createMock(IAbi.class);
-        mMockITestDevice = EasyMock.createMock(ITestDevice.class);
+        mMockInvocationListener = mock(ITestInvocationListener.class);
+        mMockAbi = mock(IAbi.class);
+        mMockITestDevice = mock(ITestDevice.class);
         mArtRunTest = new ArtRunTest();
         mArtRunTest.setAbi(mMockAbi);
         mSetter = new OptionSetter(mArtRunTest);
@@ -114,16 +118,6 @@ public class ArtRunTestTest {
         return result;
     }
 
-    /** Helper that replays all mocks. */
-    private void replayMocks() {
-        EasyMock.replay(mMockInvocationListener, mMockAbi, mMockITestDevice);
-    }
-
-    /** Helper that verifies all mocks. */
-    private void verifyMocks() {
-        EasyMock.verify(mMockInvocationListener, mMockAbi, mMockITestDevice);
-    }
-
     /** Test the behavior of the run method when the `run-test-name` option is not set. */
     @Test
     public void testRunSingleTest_unsetRunTestNameOption()
@@ -131,14 +125,12 @@ public class ArtRunTestTest {
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
-        replayMocks();
         try {
             mArtRunTest.run(mTestInfo, mMockInvocationListener);
             fail("An exception should have been thrown.");
         } catch (IllegalArgumentException e) {
             // Expected.
         }
-        verifyMocks();
     }
 
     /** Test the behavior of the run method when the `classpath` option is not set. */
@@ -150,14 +142,12 @@ public class ArtRunTestTest {
         createExpectedStdoutFile(runTestName);
         createExpectedStderrFile(runTestName);
 
-        replayMocks();
         try {
             mArtRunTest.run(mTestInfo, mMockInvocationListener);
             fail("An exception should have been thrown.");
         } catch (IllegalArgumentException e) {
             // Expected.
         }
-        verifyMocks();
     }
 
     /** Helper containing testing logic for a (single) test expected to run (and succeed). */
@@ -169,31 +159,28 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        when(mMockAbi.getName()).thenReturn("abi");
+        when(mMockITestDevice.getSerialNumber()).thenReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
-        mMockInvocationListener.testRunStarted(runName, 1);
+
         TestDescription testId = new TestDescription(runName, runTestName);
-        mMockInvocationListener.testStarted(testId);
+
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
         CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 0);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellV2Command(
-                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
-                .andReturn(result);
+        when(mMockITestDevice.executeShellV2Command(cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .thenReturn(result);
         // End of test.
-        mMockInvocationListener.testEnded(
-                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
-        mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        replayMocks();
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockInvocationListener).testRunStarted(runName, 1);
+        verify(mMockInvocationListener).testStarted(testId);
+        verify(mMockInvocationListener)
+                .testEnded(eq(testId), (HashMap<String, Metric>) Mockito.any());
+        verify(mMockInvocationListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** Helper containing testing logic for a (single) test expected not to run. */
@@ -204,12 +191,10 @@ public class ArtRunTestTest {
         createExpectedStderrFile(runTestName);
         mSetter.setOptionValue("classpath", classpath);
 
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        replayMocks();
+        when(mMockAbi.getName()).thenReturn("abi");
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
-
-        verifyMocks();
+        verify(mMockAbi).getName();
     }
 
     /** Test the run method for a (single) test. */
@@ -237,31 +222,28 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        when(mMockAbi.getName()).thenReturn("abi");
+        when(mMockITestDevice.getSerialNumber()).thenReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
-        mMockInvocationListener.testRunStarted(runName, 1);
+
         TestDescription testId = new TestDescription(runName, runTestName);
-        mMockInvocationListener.testStarted(testId);
+
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
         CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 1);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellV2Command(
-                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
-                .andReturn(result);
-        mMockInvocationListener.testFailed(testId, "Test `test` exited with code 1");
-        mMockInvocationListener.testEnded(
-                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
-        mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        replayMocks();
+        when(mMockITestDevice.executeShellV2Command(cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .thenReturn(result);
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockInvocationListener).testRunStarted(runName, 1);
+        verify(mMockInvocationListener).testStarted(testId);
+        verify(mMockInvocationListener).testFailed(testId, "Test `test` exited with code 1");
+        verify(mMockInvocationListener)
+                .testEnded(eq(testId), (HashMap<String, Metric>) Mockito.any());
+        verify(mMockInvocationListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -279,21 +261,19 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        when(mMockAbi.getName()).thenReturn("abi");
+        when(mMockITestDevice.getSerialNumber()).thenReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
-        mMockInvocationListener.testRunStarted(runName, 1);
+
         TestDescription testId = new TestDescription(runName, runTestName);
-        mMockInvocationListener.testStarted(testId);
+
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
         CommandResult result =
                 createMockCommandResult("unexpected\n", "no error\n", /* exitCode */ 0);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellV2Command(
-                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
-                .andReturn(result);
+        when(mMockITestDevice.executeShellV2Command(cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .thenReturn(result);
         // End of test.
         String errorMessage =
                 "The actual standard output does not match the expected standard output"
@@ -303,17 +283,16 @@ public class ArtRunTestTest {
                         + "@@ -1,1 +1,1 @@\n"
                         + "-output\n"
                         + "+unexpected\n";
-        mMockInvocationListener.testFailed(testId, errorMessage);
-        mMockInvocationListener.testEnded(
-                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
-        mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        replayMocks();
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockInvocationListener).testRunStarted(runName, 1);
+        verify(mMockInvocationListener).testStarted(testId);
+        verify(mMockInvocationListener).testFailed(testId, errorMessage);
+        verify(mMockInvocationListener)
+                .testEnded(eq(testId), (HashMap<String, Metric>) Mockito.any());
+        verify(mMockInvocationListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -331,21 +310,19 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        when(mMockAbi.getName()).thenReturn("abi");
+        when(mMockITestDevice.getSerialNumber()).thenReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
-        mMockInvocationListener.testRunStarted(runName, 1);
+
         TestDescription testId = new TestDescription(runName, runTestName);
-        mMockInvocationListener.testStarted(testId);
+
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
         CommandResult result =
                 createMockCommandResult("output\n", "unexpected error\n", /* exitCode */ 0);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellV2Command(
-                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
-                .andReturn(result);
+        when(mMockITestDevice.executeShellV2Command(cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .thenReturn(result);
         // End of test.
         String errorMessage =
                 "The actual standard error does not match the expected standard error"
@@ -355,17 +332,16 @@ public class ArtRunTestTest {
                         + "@@ -1,1 +1,1 @@\n"
                         + "-no error\n"
                         + "+unexpected error\n";
-        mMockInvocationListener.testFailed(testId, errorMessage);
-        mMockInvocationListener.testEnded(
-                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
-        mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        replayMocks();
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockInvocationListener).testRunStarted(runName, 1);
+        verify(mMockInvocationListener).testStarted(testId);
+        verify(mMockInvocationListener).testFailed(testId, errorMessage);
+        verify(mMockInvocationListener)
+                .testEnded(eq(testId), (HashMap<String, Metric>) Mockito.any());
+        verify(mMockInvocationListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -383,21 +359,19 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        when(mMockAbi.getName()).thenReturn("abi");
+        when(mMockITestDevice.getSerialNumber()).thenReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
-        mMockInvocationListener.testRunStarted(runName, 1);
+
         TestDescription testId = new TestDescription(runName, runTestName);
-        mMockInvocationListener.testStarted(testId);
+
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
         CommandResult result =
                 createMockCommandResult("unexpected\n", "unexpected error\n", /* exitCode */ 2);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellV2Command(
-                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
-                .andReturn(result);
+        when(mMockITestDevice.executeShellV2Command(cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .thenReturn(result);
         // End of test.
         String errorMessage =
                 "Test `test` exited with code 2\n"
@@ -416,17 +390,16 @@ public class ArtRunTestTest {
                         + "@@ -1,1 +1,1 @@\n"
                         + "-no error\n"
                         + "+unexpected error\n";
-        mMockInvocationListener.testFailed(testId, errorMessage);
-        mMockInvocationListener.testEnded(
-                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
-        mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        replayMocks();
 
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockInvocationListener).testRunStarted(runName, 1);
+        verify(mMockInvocationListener).testStarted(testId);
+        verify(mMockInvocationListener).testFailed(testId, errorMessage);
+        verify(mMockInvocationListener)
+                .testEnded(eq(testId), (HashMap<String, Metric>) Mockito.any());
+        verify(mMockInvocationListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** Test the run method for a (single) test contained in an include filter. */

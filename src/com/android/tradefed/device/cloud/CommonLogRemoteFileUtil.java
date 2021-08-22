@@ -30,6 +30,7 @@ import com.android.tradefed.util.ZipUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -43,6 +44,13 @@ public class CommonLogRemoteFileUtil {
     /** The directory where to find debug logs for an emulator instance. */
     public static final String EMULATOR_REMOTE_LOG_DIR = "/home/%s/log/";
     public static final String TOMBSTONES_ZIP_NAME = "tombstones-zip";
+
+    /** The directory where to find emulator logs from Oxygen service. */
+    public static final String OXYGEN_EMULATOR_LOG_DIR = "/tmp/device_launcher/";
+    /** The directory where to find Oxygen device runtime logs. */
+    public static final String OXYGEN_RUNTIME_LOG_DIR = "/tmp/cfbase/3/cuttlefish_runtime/";
+
+    public static final List<KnownLogFileEntry> OXYGEN_LOG_FILES = new ArrayList<>();
 
     public static final MultiMap<InstanceType, KnownLogFileEntry> KNOWN_FILES_TO_FETCH =
             new MultiMap<>();
@@ -84,6 +92,19 @@ public class CommonLogRemoteFileUtil {
         KNOWN_FILES_TO_FETCH.put(
                 InstanceType.EMULATOR,
                 new KnownLogFileEntry("/var/log/daemon.log", null, LogDataType.TEXT));
+
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_EMULATOR_LOG_DIR + "emulator_stderr.txt", null, LogDataType.TEXT));
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_EMULATOR_LOG_DIR + "emulator_stdout.txt", null, LogDataType.TEXT));
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_RUNTIME_LOG_DIR + "launcher.log", null, LogDataType.TEXT));
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_RUNTIME_LOG_DIR + "kernel.log", null, LogDataType.TEXT));
     }
 
     /** A representation of a known log entry for remote devices. */
@@ -118,6 +139,10 @@ public class CommonLogRemoteFileUtil {
         }
         // Capture known extra files
         List<KnownLogFileEntry> toFetch = KNOWN_FILES_TO_FETCH.get(options.getInstanceType());
+        if (options.useOxygen()) {
+            // Override the list of logs to collect when the device is hosted by Oxygen service.
+            toFetch = OXYGEN_LOG_FILES;
+        }
         if (toFetch != null) {
             for (KnownLogFileEntry entry : toFetch) {
                 LogRemoteFile(

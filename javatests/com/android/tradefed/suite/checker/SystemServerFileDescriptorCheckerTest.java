@@ -17,98 +17,92 @@ package com.android.tradefed.suite.checker;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link SystemServerFileDescriptorChecker} */
 @RunWith(JUnit4.class)
 public class SystemServerFileDescriptorCheckerTest {
 
     private SystemServerFileDescriptorChecker mChecker;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
+
         mChecker = new SystemServerFileDescriptorChecker();
     }
 
     @Test
     public void testFailToGetPid() throws Exception {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
-                .andReturn("userdebug");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
-                .andReturn("not found\n");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.build.type"))).thenReturn("userdebug");
+        when(mMockDevice.executeShellCommand(Mockito.eq("pidof system_server")))
+                .thenReturn("not found\n");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testFailToGetFdCount() throws Exception {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
-                .andReturn("userdebug");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
-                .andReturn("1024\n");
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                EasyMock.eq("su root ls /proc/1024/fd | wc -w")))
-                .andReturn("not found\n");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.build.type"))).thenReturn("userdebug");
+        when(mMockDevice.executeShellCommand(Mockito.eq("pidof system_server")))
+                .thenReturn("1024\n");
+        when(mMockDevice.executeShellCommand(Mockito.eq("su root ls /proc/1024/fd | wc -w")))
+                .thenReturn("not found\n");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testAcceptableFdCount() throws Exception {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
-                .andReturn("userdebug");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
-                .andReturn("914\n");
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                EasyMock.eq("su root ls /proc/914/fd | wc -w")))
-                .andReturn("382  \n");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.build.type"))).thenReturn("userdebug");
+        when(mMockDevice.executeShellCommand(Mockito.eq("pidof system_server")))
+                .thenReturn("914\n");
+        when(mMockDevice.executeShellCommand(Mockito.eq("su root ls /proc/914/fd | wc -w")))
+                .thenReturn("382  \n");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testUnacceptableFdCount() throws Exception {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type")))
-                .andReturn("userdebug");
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.eq("pidof system_server")))
-                .andReturn("914\n");
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                EasyMock.eq("su root ls /proc/914/fd | wc -w")))
-                .andReturn("1002  \n");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.build.type"))).thenReturn("userdebug");
+        when(mMockDevice.executeShellCommand(Mockito.eq("pidof system_server")))
+                .thenReturn("914\n");
+        when(mMockDevice.executeShellCommand(Mockito.eq("su root ls /proc/914/fd | wc -w")))
+                .thenReturn("1002  \n");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         StatusCheckerResult postResult = mChecker.postExecutionCheck(mMockDevice);
         assertEquals(CheckStatus.FAILED, postResult.getStatus());
         assertNotNull(postResult.getErrorMessage());
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testUserBuild() throws Exception {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.build.type"))).andReturn("user");
-        // no further calls should happen after above
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.build.type"))).thenReturn("user");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
+
+        verify(mMockDevice).getProperty(Mockito.eq("ro.build.type"));
+        // no further calls should happen after above
+        verifyNoMoreInteractions(mMockDevice);
     }
 }

@@ -34,12 +34,14 @@ public class ClearcutEventHelper {
      * @param userKey The unique id representing the user
      * @param runId The current id for the session.
      * @param userType The type of the user: internal or external.
+     * @param subToolName The name of test suite tool.
      * @return a ByteString representation of the even proto.
      */
-    public static ByteString createStartEvent(String userKey, String runId, UserType userType) {
+    public static ByteString createStartEvent(
+            String userKey, String runId, UserType userType, String subToolName) {
         if (UserType.GOOGLE.equals(userType)) {
             AtestLogEventInternal.Builder builder =
-                    createBaseInternalEventBuilder(userKey, runId, userType);
+                    createBaseInternalEventBuilder(userKey, runId, userType, subToolName);
             AtestLogEventInternal.AtestStartEvent.Builder startEventBuilder =
                     AtestLogEventInternal.AtestStartEvent.newBuilder();
             builder.setAtestStartEvent(startEventBuilder.build());
@@ -47,7 +49,7 @@ public class ClearcutEventHelper {
         }
 
         AtestLogEventExternal.Builder builder =
-                createBaseExternalEventBuilder(userKey, runId, userType);
+                createBaseExternalEventBuilder(userKey, runId, userType, subToolName);
         AtestStartEvent.Builder startBuilder = AtestStartEvent.newBuilder();
         builder.setAtestStartEvent(startBuilder.build());
         return builder.build().toByteString();
@@ -59,12 +61,14 @@ public class ClearcutEventHelper {
      * @param userKey The unique id representing the user
      * @param runId The current id for the session.
      * @param userType The type of the user: internal or external.
+     * @param subToolName The name of test suite tool.
      * @return a ByteString representation of the even proto.
      */
-    public static ByteString createRunStartEvent(String userKey, String runId, UserType userType) {
+    public static ByteString createRunStartEvent(
+            String userKey, String runId, UserType userType, String subToolName) {
         if (UserType.GOOGLE.equals(userType)) {
             AtestLogEventInternal.Builder builder =
-                    createBaseInternalEventBuilder(userKey, runId, userType);
+                    createBaseInternalEventBuilder(userKey, runId, userType, subToolName);
             AtestLogEventInternal.RunnerFinishEvent.Builder startRunEventBuilder =
                     AtestLogEventInternal.RunnerFinishEvent.newBuilder();
             builder.setRunnerFinishEvent(startRunEventBuilder.build());
@@ -72,7 +76,7 @@ public class ClearcutEventHelper {
         }
 
         AtestLogEventExternal.Builder builder =
-                createBaseExternalEventBuilder(userKey, runId, userType);
+                createBaseExternalEventBuilder(userKey, runId, userType, subToolName);
         RunnerFinishEvent.Builder startBuilder = RunnerFinishEvent.newBuilder();
         builder.setRunnerFinishEvent(startBuilder.build());
         return builder.build().toByteString();
@@ -84,15 +88,17 @@ public class ClearcutEventHelper {
      * @param userKey The unique id representing the user
      * @param runId The current id for the session.
      * @param userType The type of the user: internal or external.
+     * @param subToolName The name of test suite tool.
      * @return a builder for the event.
      */
     private static AtestLogEventExternal.Builder createBaseExternalEventBuilder(
-            String userKey, String runId, UserType userType) {
+            String userKey, String runId, UserType userType, String subToolName) {
         AtestLogEventExternal.Builder builder = AtestLogEventExternal.newBuilder();
         builder.setUserKey(userKey);
         builder.setRunId(runId);
         builder.setUserType(userType);
         builder.setToolName(TOOL_NAME);
+        builder.setSubToolName(subToolName);
         return builder;
     }
 
@@ -102,15 +108,17 @@ public class ClearcutEventHelper {
      * @param userKey The unique id representing the user
      * @param runId The current id for the session.
      * @param userType The type of the user: internal or external.
+     * @param subToolName The name of test suite tool.
      * @return a builder for the event.
      */
     private static AtestLogEventInternal.Builder createBaseInternalEventBuilder(
-            String userKey, String runId, UserType userType) {
+            String userKey, String runId, UserType userType, String subToolName) {
         AtestLogEventInternal.Builder builder = AtestLogEventInternal.newBuilder();
         builder.setUserKey(userKey);
         builder.setRunId(runId);
         builder.setUserType(userType);
         builder.setToolName(TOOL_NAME);
+        builder.setSubToolName(subToolName);
         return builder;
     }
 }

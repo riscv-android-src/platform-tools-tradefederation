@@ -17,7 +17,7 @@ package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.FailureDescription;
 
 /** Collect a bugreportz when a test case fails. */
 public class BugreportzOnFailureCollector extends BaseDeviceMetricCollector {
@@ -25,9 +25,9 @@ public class BugreportzOnFailureCollector extends BaseDeviceMetricCollector {
     private static final String NAME_FORMAT = "%s-%s-bugreportz-on-failure";
 
     @Override
-    public void onTestFail(DeviceMetricData testData, TestDescription test) {
+    public void onTestRunFailed(DeviceMetricData testData, FailureDescription failure) {
         for (ITestDevice device : getDevices()) {
-            String name = String.format(NAME_FORMAT, test.toString(), device.getSerialNumber());
+            String name = String.format(NAME_FORMAT, getRunName(), device.getSerialNumber());
             if (!device.logBugreport(name, getInvocationListener())) {
                 CLog.e("Failed to capture bugreportz on '%s'", device.getSerialNumber());
             }

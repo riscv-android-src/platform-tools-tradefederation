@@ -71,6 +71,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     private GceSshTunnelMonitor mGceSshMonitor;
     private DeviceNotAvailableException mTunnelInitFailed = null;
 
+    private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
     private static final long WAIT_FOR_TUNNEL_ONLINE = 2 * 60 * 1000;
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
     private static final long WAIT_FOR_TUNNEL_OFFLINE = 5 * 1000;
@@ -344,26 +345,32 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
-        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
-            // We threw before but was not reported, so throw the root cause here.
-            throw mTunnelInitFailed;
-        }
-        long startTime = System.currentTimeMillis();
-        try {
-            // Re-init tunnel when attempting recovery
-            CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
-            getGceSshMonitor().closeConnection();
-            getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
+        if (getGceSshMonitor() == null) {
+            if (mTunnelInitFailed != null) {
+                // We threw before but was not reported, so throw the root cause here.
+                throw mTunnelInitFailed;
+            }
             waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
-            waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
-        } catch (Exception e) {
-            // Log the entrance in recovery here to avoid double counting with super.recoverDevice.
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.RECOVERY_ROUTINE_COUNT, 1);
-            throw e;
-        } finally {
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.RECOVERY_TIME, System.currentTimeMillis() - startTime);
+        }
+        // Check that shell is available before resetting the bridge
+        if (!waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS)) {
+            long startTime = System.currentTimeMillis();
+            try {
+                // Re-init tunnel when attempting recovery
+                CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
+                getGceSshMonitor().closeConnection();
+                getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
+                waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
+                waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+            } catch (Exception e) {
+                // Log the entrance in recovery here to avoid double counting with super.recoverDevice.
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.RECOVERY_ROUTINE_COUNT, 1);
+                throw e;
+            } finally {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.RECOVERY_TIME, System.currentTimeMillis() - startTime);
+            }
         }
         // Then attempt regular recovery
         super.recoverDevice();
@@ -450,6 +457,17 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
      */
     protected GceSshTunnelMonitor getGceSshMonitor() {
         return mGceSshMonitor;
+    }
+
+    /**
+     * Override the internal {@link com.android.tradefed.device.cloud.GceSshTunnelMonitor} of the
+     * device.
+     */
+    // TODO(b/190657509): Remove this API once boot test is refactored to use
+    // preInvocationSetup and postInvocationTeardown.
+    public void setGceSshMonitor(GceSshTunnelMonitor gceSshMonitor) {
+        CLog.i("Overriding internal GCE SSH monitor.");
+        mGceSshMonitor = gceSshMonitor;
     }
 
     /** Returns the current system time. Exposed for testing. */

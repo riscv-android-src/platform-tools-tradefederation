@@ -20,18 +20,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.command.Console.CaptureList;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.AdditionalMatchers;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -41,7 +47,7 @@ import java.util.List;
 @RunWith(JUnit4.class)
 public class ConsoleTest {
 
-    private ICommandScheduler mMockScheduler;
+    @Mock ICommandScheduler mMockScheduler;
     private Console mConsole;
     private ProxyExceptionHandler mProxyExceptionHandler;
     private boolean mIsConsoleFunctional;
@@ -63,20 +69,22 @@ public class ConsoleTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockScheduler = EasyMock.createStrictMock(ICommandScheduler.class);
+        MockitoAnnotations.initMocks(this);
+
         mIsConsoleFunctional = false;
         /**
          * Note: Eclipse doesn't play nice with consoles allocated like {@code new ConsoleReader()}.
-         * To make an actual ConsoleReader instance, you should likely use the four-arg
-         * {@link jline.ConsoleReader} constructor and use {@link jline.UnsupportedTerminal} or
-         * similar as the implementation.
+         * To make an actual ConsoleReader instance, you should likely use the four-arg {@link
+         * jline.ConsoleReader} constructor and use {@link jline.UnsupportedTerminal} or similar as
+         * the implementation.
          */
-        mConsole = new Console(null) {
-            @Override
-            boolean isConsoleFunctional() {
-                return mIsConsoleFunctional;
-            }
-        };
+        mConsole =
+                new Console(null) {
+                    @Override
+                    boolean isConsoleFunctional() {
+                        return mIsConsoleFunctional;
+                    }
+                };
         mConsole.setCommandScheduler(mMockScheduler);
         mProxyExceptionHandler = new ProxyExceptionHandler();
         mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
@@ -96,19 +104,16 @@ public class ConsoleTest {
         mConsole.setName("testRun_withConsole");
         mIsConsoleFunctional = true;
 
-        mMockScheduler.start();
-        mMockScheduler.await();
-        EasyMock.expectLastCall().anyTimes();
-        mMockScheduler.shutdown();  // after we discover that we can't read console input
-
-        EasyMock.replay(mMockScheduler);
-
         // non interactive mode needs some args to start
         mConsole.setArgs(Arrays.asList("help"));
         mConsole.start();
         mConsole.join();
         mProxyExceptionHandler.verify();
-        EasyMock.verify(mMockScheduler);
+        InOrder inOrder = Mockito.inOrder(mMockScheduler);
+        inOrder.verify(mMockScheduler).start();
+        inOrder.verify(mMockScheduler).shutdown();
+        verify(mMockScheduler).start();
+        verify(mMockScheduler).shutdown();
     }
 
     /**
@@ -117,23 +122,18 @@ public class ConsoleTest {
      */
     @Test
     public void testRun_withConsoleInteractiveHelp() throws Throwable {
-        mConsole = new Console() {
-            @Override
-            boolean isConsoleFunctional() {
-                return mIsConsoleFunctional;
-            }
-        };
+        mConsole =
+                new Console() {
+                    @Override
+                    boolean isConsoleFunctional() {
+                        return mIsConsoleFunctional;
+                    }
+                };
         mConsole.setName("testRun_withConsoleInteractiveHelp");
         mConsole.setCommandScheduler(mMockScheduler);
         mProxyExceptionHandler = new ProxyExceptionHandler();
         mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
         mIsConsoleFunctional = true;
-
-        mMockScheduler.start();
-        mMockScheduler.await();
-        EasyMock.expectLastCall().anyTimes();
-        mMockScheduler.shutdown();  // after we discover that it was started with help
-        EasyMock.replay(mMockScheduler);
 
         mConsole.setArgs(Arrays.asList("help"));
         mConsole.start();
@@ -141,7 +141,11 @@ public class ConsoleTest {
         mConsole.join(2000);
         assertFalse(mConsole.isAlive());
         mProxyExceptionHandler.verify();
-        EasyMock.verify(mMockScheduler);
+        InOrder inOrder = Mockito.inOrder(mMockScheduler);
+        inOrder.verify(mMockScheduler).start();
+        inOrder.verify(mMockScheduler).shutdown();
+        verify(mMockScheduler).start();
+        verify(mMockScheduler).shutdown();
     }
 
     /**
@@ -168,18 +172,16 @@ public class ConsoleTest {
         mConsole.setUncaughtExceptionHandler(mProxyExceptionHandler);
         mIsConsoleFunctional = true;
 
-        mMockScheduler.start();
-        mMockScheduler.await();
-        EasyMock.expectLastCall().anyTimes();
         // No scheduler shutdown is expected.
-        EasyMock.replay(mMockScheduler);
+
         try {
             mConsole.start();
             // join has a timeout otherwise it hangs forever.
             mConsole.join(100);
             assertTrue(mConsole.isAlive());
             mProxyExceptionHandler.verify();
-            EasyMock.verify(mMockScheduler);
+
+            verify(mMockScheduler).start();
         } finally {
             mConsole.exitConsole();
             RunUtil.getDefault()
@@ -197,20 +199,14 @@ public class ConsoleTest {
         mConsole.setName("testRun_noConsole");
         mIsConsoleFunctional = false;
 
-        mMockScheduler.start();
-        mMockScheduler.await();
-        EasyMock.expectLastCall().anyTimes();
-        // after we run the initial command and then immediately quit.
-        mMockScheduler.shutdown();
-
-        EasyMock.replay(mMockScheduler);
-
         // non interactive mode needs some args to start
         mConsole.setArgs(Arrays.asList("help"));
         mConsole.start();
         mConsole.join();
         mProxyExceptionHandler.verify();
-        EasyMock.verify(mMockScheduler);
+
+        verify(mMockScheduler).start();
+        verify(mMockScheduler).shutdown();
     }
 
     /** Make sure that "run command foo config.xml" works properly. */
@@ -222,15 +218,13 @@ public class ConsoleTest {
         CaptureList captures = new CaptureList();
         RegexTrie<Runnable> trie = mConsole.getCommandTrie();
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expected))).andReturn(
-                Boolean.TRUE);
-        EasyMock.replay(mMockScheduler);
+        when(mMockScheduler.addCommand(AdditionalMatchers.aryEq(expected)))
+                .thenReturn(Boolean.TRUE);
 
         Runnable runnable = trie.retrieve(captures, command);
-        assertNotNull(String.format("Console didn't match input %s", Arrays.toString(command)),
-                runnable);
+        assertNotNull(
+                String.format("Console didn't match input %s", Arrays.toString(command)), runnable);
         mConsole.executeCmdRunnable(runnable, captures);
-        EasyMock.verify(mMockScheduler);
     }
 
     /** Make sure that the "run foo config.xml" shortcut works properly. */
@@ -242,15 +236,13 @@ public class ConsoleTest {
         CaptureList captures = new CaptureList();
         RegexTrie<Runnable> trie = mConsole.getCommandTrie();
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expected))).andReturn(
-                Boolean.TRUE);
-        EasyMock.replay(mMockScheduler);
+        when(mMockScheduler.addCommand(AdditionalMatchers.aryEq(expected)))
+                .thenReturn(Boolean.TRUE);
 
         Runnable runnable = trie.retrieve(captures, command);
-        assertNotNull(String.format("Console didn't match input %s", Arrays.toString(command)),
-                runnable);
+        assertNotNull(
+                String.format("Console didn't match input %s", Arrays.toString(command)), runnable);
         mConsole.executeCmdRunnable(runnable, captures);
-        EasyMock.verify(mMockScheduler);
     }
 
     /**
@@ -260,21 +252,19 @@ public class ConsoleTest {
     @Test
     public void testRunCommand_startsWithCommand() throws Exception {
         mConsole.setName("testRunCommand_startsWithCommand");
-        String[] command = new String[] {"run", "command", "command", "--arg", "value",
-                "config.xml"};
+        String[] command =
+                new String[] {"run", "command", "command", "--arg", "value", "config.xml"};
         String[] expected = new String[] {"command", "--arg", "value", "config.xml"};
         CaptureList captures = new CaptureList();
         RegexTrie<Runnable> trie = mConsole.getCommandTrie();
 
-        EasyMock.expect(mMockScheduler.addCommand(EasyMock.aryEq(expected))).andReturn(
-                Boolean.TRUE);
-        EasyMock.replay(mMockScheduler);
+        when(mMockScheduler.addCommand(AdditionalMatchers.aryEq(expected)))
+                .thenReturn(Boolean.TRUE);
 
         Runnable runnable = trie.retrieve(captures, command);
-        assertNotNull(String.format("Console didn't match input %s", Arrays.toString(command)),
-                runnable);
+        assertNotNull(
+                String.format("Console didn't match input %s", Arrays.toString(command)), runnable);
         mConsole.executeCmdRunnable(runnable, captures);
-        EasyMock.verify(mMockScheduler);
     }
 
     /** Make sure that {@link Console#getFlatArgs} works as expected. */
@@ -321,4 +311,3 @@ public class ConsoleTest {
         }
     }
 }
-

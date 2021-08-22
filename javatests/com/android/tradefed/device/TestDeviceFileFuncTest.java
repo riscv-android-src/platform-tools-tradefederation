@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Functional tests for the {@link ITestDevice} file management APIs */
 @RunWith(DeviceJUnit4ClassRunner.class)
@@ -544,11 +545,14 @@ public class TestDeviceFileFuncTest implements IDeviceTest {
         }
 
         if (firstFile.isDirectory()) {
-            List<Path> firstFileList =
-                    Files.list(firstFile.toPath()).sorted().collect(Collectors.toList());
-            List<Path> secondFileList =
-                    Files.list(secondFile.toPath()).sorted().collect(Collectors.toList());
-
+            List<Path> firstFileList;
+            try (Stream<Path> stream = Files.list(firstFile.toPath())) {
+                firstFileList = stream.sorted().collect(Collectors.toList());
+            }
+            List<Path> secondFileList;
+            try (Stream<Path> stream = Files.list(secondFile.toPath())) {
+                secondFileList = stream.sorted().collect(Collectors.toList());
+            }
             assertEquals(firstFileList.size(), secondFileList.size());
 
             for (int i = 0; i < firstFileList.size(); i++) {

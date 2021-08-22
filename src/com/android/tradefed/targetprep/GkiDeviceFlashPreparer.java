@@ -21,9 +21,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
@@ -38,6 +39,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -110,6 +112,11 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             description = "Whether to wipe device after GKI boot image flash.")
     private boolean mShouldWipeDevice = true;
 
+    @Option(
+            name = "boot-header-version",
+            description = "The version of the boot.img header. Set to 3 by default.")
+    private int mBootHeaderVersion = 3;
+
     private File mBootImg = null;
 
     /** {@inheritDoc} */
@@ -156,13 +163,13 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
     }
 
     /**
-     * Get a reference to the {@link IDeviceManager}
+     * Get a reference to the {@link IHostOptions}
      *
-     * @return the {@link IDeviceManager} to use
+     * @return the {@link IHostOptions} to use
      */
     @VisibleForTesting
-    IDeviceManager getDeviceManager() {
-        return GlobalConfiguration.getDeviceManagerInstance();
+    protected IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
     }
 
     /**
@@ -185,10 +192,9 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      */
     private void flashGki(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError, DeviceNotAvailableException {
-        IDeviceManager deviceManager = getDeviceManager();
         device.rebootIntoBootloader();
         long start = System.currentTimeMillis();
-        deviceManager.takeFlashingPermit();
+        getHostOptions().takePermit(PermitLimitType.CONCURRENT_FLASHER);
         CLog.v(
                 "Flashing permit obtained after %ds",
                 TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
@@ -219,7 +225,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 executeFastbootCmd(device, "-w");
             }
         } finally {
-            deviceManager.returnFlashingPermit();
+            getHostOptions().returnPermit(PermitLimitType.CONCURRENT_FLASHER);
             // Allow interruption at the end no matter what.
             getRunUtil().allowInterrupt(true);
             CLog.v(
@@ -283,10 +289,11 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             mBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
             String cmd =
                     String.format(
-                            "%s --kernel %s --header_version 3 --base 0x00000000 "
+                            "%s --kernel %s --header_version %d --base 0x00000000 "
                                     + "--pagesize 4096 --ramdisk %s -o %s",
                             mkbootimg.getAbsolutePath(),
                             buildInfo.getFile(KERNEL_IMAGE),
+                            mBootHeaderVersion,
                             buildInfo.getFile(mRamdiskImageName),
                             mBootImg.getAbsolutePath());
             executeHostCommand(device, cmd);
@@ -393,7 +400,9 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      */
     private String executeFastbootCmd(ITestDevice device, String... cmdArgs)
             throws DeviceNotAvailableException, TargetSetupError {
-        CLog.i("Execute fastboot command %s on %s", cmdArgs, device.getSerialNumber());
+        CLog.i(
+                "Execute fastboot command %s on %s",
+                Arrays.toString(cmdArgs), device.getSerialNumber());
         CommandResult result = device.executeLongFastbootCommand(cmdArgs);
         CLog.v("fastboot stdout: " + result.getStdout());
         CLog.v("fastboot stderr: " + result.getStderr());
@@ -407,7 +416,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs,
+                            Arrays.toString(cmdArgs),
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),

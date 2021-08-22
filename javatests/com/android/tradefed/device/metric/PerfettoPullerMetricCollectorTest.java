@@ -91,7 +91,6 @@ public class PerfettoPullerMetricCollectorTest {
 
     @Test
     public void testProcessingFlow() throws Exception {
-
         OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
         setter.setOptionValue("pull-pattern-keys", "perfettofile");
         setter.setOptionValue("perfetto-binary-path", "trx");
@@ -109,8 +108,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, currentMetrics);
 
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
@@ -147,8 +148,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, currentMetrics);
 
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
@@ -185,8 +188,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, currentMetrics);
 
         Mockito.verify(mMockDevice, times(0)).pullFile(Mockito.eq("/data/trace.pb"));
         Mockito.verify(mPerfettoMetricCollector, times(2)).runHostCommand(Mockito.anyLong(),
@@ -221,8 +226,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, currentMetrics);
 
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
@@ -258,8 +265,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, new HashMap<String, Metric>());
 
         ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
@@ -297,8 +306,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, new HashMap<String, Metric>());
 
         String path = tmpFile.getAbsolutePath();
         tmpFile.delete();
@@ -342,8 +353,10 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
 
+        mPerfettoMetricCollector.testRunStarted("runName", 1);
         mPerfettoMetricCollector.testStarted(testDesc);
         mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+        mPerfettoMetricCollector.testRunEnded(100L, new HashMap<String, Metric>());
         tmpFile.delete();
 
         ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);

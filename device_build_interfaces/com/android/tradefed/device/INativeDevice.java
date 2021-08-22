@@ -332,7 +332,7 @@ public interface INativeDevice {
      * CommandResult} properly populated with the command status output, stdout and stderr.
      *
      * @param command The command that should be run.
-     * @param pipeAsInput A {@link File} that will be piped as input to the command.
+     * @param pipeAsInput A {@link File} that will be piped as input to the command, or null.
      * @return The result in {@link CommandResult}.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -342,10 +342,11 @@ public interface INativeDevice {
 
     /**
      * Helper method which executes an adb shell command and returns the results as a {@link
-     * CommandResult} properly populated with the command status output, stdout and stderr.
+     * CommandResult} properly populated with the command status output and stderr. stdout is
+     * directed to the specified stream.
      *
      * @param command The command that should be run.
-     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected, or null.
      * @return The result in {@link CommandResult}.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -396,8 +397,8 @@ public interface INativeDevice {
      *
      * @see #executeShellV2Command(String)
      * @param command the adb shell command to run
-     * @param pipeAsInput A {@link File} that will be piped as input to the command.
-     * @param pipeToOutput {@link OutputStream} where the std output will be redirected.
+     * @param pipeAsInput A {@link File} that will be piped as input to the command, or null.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected, or null.
      * @param maxTimeoutForCommand the maximum timeout for the command to complete; unit as
      *     specified in <code>timeUnit</code>
      * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>
@@ -412,6 +413,34 @@ public interface INativeDevice {
             String command,
             File pipeAsInput,
             OutputStream pipeToOutput,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Executes a adb shell command, with more parameters to control command behavior.
+     *
+     * @see #executeShellV2Command(String)
+     * @param command the adb shell command to run
+     * @param pipeAsInput A {@link File} that will be piped as input to the command, or null.
+     * @param pipeToOutput {@link OutputStream} where the std output will be redirected, or null.
+     * @param pipeToError {@link OutputStream} where the std error will be redirected, or null.
+     * @param maxTimeoutForCommand the maximum timeout for the command to complete; unit as
+     *     specified in <code>timeUnit</code>
+     * @param timeUnit unit for <code>maxTimeToOutputShellResponse</code>
+     * @param retryAttempts the maximum number of times to retry command if it fails due to a
+     *     exception. DeviceNotResponsiveException will be thrown if <var>retryAttempts</var> are
+     *     performed without success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     * @see TimeUtil
+     */
+    public CommandResult executeShellV2Command(
+            String command,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
+            OutputStream pipeToError,
             final long maxTimeoutForCommand,
             final TimeUnit timeUnit,
             int retryAttempts)

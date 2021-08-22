@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.isolation.FilterSpec;
@@ -38,6 +39,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -154,7 +156,7 @@ public class IsolatedHostTest
             description =
                     "The android-all resource jar to be used, e.g."
                             + " 'android-all-R-robolectric-r0.jar'")
-    private String mAndroidAllName = "android-all-S-robolectric-r0.jar";
+    private String mAndroidAllName = "android-all-T-robolectric-r0.jar";
 
     @Option(
             name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
@@ -193,6 +195,11 @@ public class IsolatedHostTest
             List<String> cmdArgs = this.compileCommandArgs(classpath);
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
+
+            String ldLibraryPath = this.compileLdLibraryPath();
+            if (ldLibraryPath != null) {
+                runner.setEnvVariable("LD_LIBRARY_PATH", ldLibraryPath);
+            }
 
             // Note the below chooses a working directory based on the jar that happens to
             // be first in the list of configured jars.  The baked-in assumption is that
@@ -375,8 +382,9 @@ public class IsolatedHostTest
                 // This is contingent on the current android-all version.
                 File androidAllJar = FileUtil.findFile(testDir, mAndroidAllName);
                 if (androidAllJar == null) {
-                    throw new RuntimeException(
-                            "Could not find android-all jar needed for test execution.");
+                    throw new HarnessRuntimeException(
+                            "Could not find android-all jar needed for test execution.",
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 }
                 paths.add(androidAllJar.getAbsolutePath());
             }
@@ -396,6 +404,58 @@ public class IsolatedHostTest
         String jarClasspath = String.join(java.io.File.pathSeparator, paths);
 
         return jarClasspath;
+    }
+
+    @VisibleForTesting
+    String getEnvironment(String key) {
+        return System.getenv(key);
+    }
+
+    /**
+     * Return LD_LIBRARY_PATH for tests that require native library.
+     *
+     * @return a string specifying the colon separated library path.
+     */
+    @VisibleForTesting
+    protected String compileLdLibraryPath() {
+        if (mClasspathOverride != null) {
+            return null;
+        }
+        File testDir = findTestDirectory();
+        List<String> paths = new ArrayList<>();
+
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f == null || !f.exists()) {
+                continue;
+            }
+            String libs[] = {"lib", "lib64"};
+            for (String lib : libs) {
+                File libFile = new File(f.getParentFile().getAbsolutePath(), lib);
+                // If the test module has no lib directory packaged, we assume the test does not
+                // require any external native library.
+                if (!libFile.exists()) {
+                    continue;
+                }
+                paths.add(libFile.getAbsolutePath());
+                // Include `testcases` directory for running tests based on test zip.
+                libFile = new File(f.getParentFile().getParentFile().getAbsolutePath(), lib);
+                if (libFile.exists()) {
+                    paths.add(libFile.getAbsolutePath());
+                }
+                // Include ANDROID_HOST_OUT/lib to support local case.
+                if (getEnvironment("ANDROID_HOST_OUT") != null) {
+                    libFile = new File(getEnvironment("ANDROID_HOST_OUT"), lib);
+                    if (libFile.exists()) {
+                        paths.add(libFile.getAbsolutePath());
+                    }
+                }
+            }
+        }
+        if (paths.isEmpty()) {
+            return null;
+        }
+        return String.join(java.io.File.pathSeparator, paths);
     }
 
     private List<String> compileRobolectricOptions() {

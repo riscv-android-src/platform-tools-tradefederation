@@ -16,23 +16,25 @@
 package com.android.tradefed.testtype.suite.module;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link DeviceFeatureModuleController}. */
 @RunWith(JUnit4.class)
@@ -40,43 +42,42 @@ public class DeviceFeatureModuleControllerTest {
     private static final String REQUIRED_FEATURE = "required.feature";
     private DeviceFeatureModuleController mController;
     private IInvocationContext mContext;
-    private ITestDevice mMockDevice;
-    private IDevice mMockIDevice;
+    @Mock ITestDevice mMockDevice;
+    @Mock IDevice mMockIDevice;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mController = new DeviceFeatureModuleController();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "arm64-v8a");
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, "module1");
-        mMockIDevice = EasyMock.createMock(IDevice.class);
     }
 
     /** Test device has the required feature. */
     @Test
     public void testDeviceHasRequiredFeature()
             throws DeviceNotAvailableException, ConfigurationException {
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.hasFeature(REQUIRED_FEATURE)).andReturn(true);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.hasFeature(REQUIRED_FEATURE)).thenReturn(true);
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("required-feature", REQUIRED_FEATURE);
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test device does not have the required feature. */
     @Test
     public void testDeviceHasNoRequiredFeature()
             throws DeviceNotAvailableException, ConfigurationException {
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.hasFeature(REQUIRED_FEATURE)).andReturn(false);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.hasFeature(REQUIRED_FEATURE)).thenReturn(false);
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("required-feature", REQUIRED_FEATURE);
         assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 }

@@ -176,6 +176,71 @@ public class ClusterCommandLauncherTest {
     }
 
     @Test
+    public void testRun_withTFDeviceCount()
+            throws DeviceNotAvailableException, ConfigurationException, IOException {
+        mConfiguration = new Configuration("name", "description");
+        mConfiguration.getCommandOptions().setInvocationTimeout(10000L);
+        mConfiguration.getCommandOptions().setShardCount(1);
+        mInvocationContext = new InvocationContext();
+        mLauncher = Mockito.spy(ClusterCommandLauncher.class);
+        mLauncher.setConfiguration(mConfiguration);
+        mLauncher.setInvocationContext(mInvocationContext);
+        mOptionSetter = new OptionSetter(mLauncher);
+        mOptionSetter.setOptionValue("cluster:root-dir", mRootDir.getAbsolutePath());
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_WORK_DIR", mRootDir.getAbsolutePath());
+
+        mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        mInvocationContext.addAllocatedDevice("bar", mMockTestDevice);
+        final File tfJar = new File(mRootDir, "foo.jar");
+        tfJar.createNewFile();
+        final File extraJar = new File(mTfPath, "extra.jar");
+        extraJar.createNewFile();
+        final String tfPathValue =
+                String.format(
+                        "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
+                        tfJar.getName(), mTfPath.getName(), mTfLibDir.getName());
+        final List<String> jars = new ArrayList<>();
+        jars.add(tfJar.getAbsolutePath());
+        jars.add(extraJar.getAbsolutePath());
+        final String classpath = ArrayUtil.join(":", jars);
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
+        mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
+        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
+        final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
+        when(mMockRunUtil.runTimedCmdWithInput(
+                        Mockito.anyLong(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        Mockito.<String[]>any()))
+                .thenReturn(mockCommandResult);
+        Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
+
+        mLauncher.run(mMockTestInformation, mMockListener);
+
+        Mockito.verify(mMockRunUtil).setEnvVariable("TF_DEVICE_COUNT", "2");
+        Mockito.verify(mMockRunUtil)
+                .runTimedCmdWithInput(
+                        Mockito.eq(10000L),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        asMatchers(
+                                new String[] {
+                                    SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
+                                    "-cp",
+                                    classpath,
+                                    "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
+                                    "com.android.tradefed.command.CommandRunner",
+                                    COMMAND,
+                                    "--serial",
+                                    DEVICE_SERIAL,
+                                    "--serial",
+                                    DEVICE_SERIAL
+                                }));
+    }
+
+    @Test
     public void testRun_withSetupScripts()
             throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
@@ -305,5 +370,64 @@ public class ClusterCommandLauncherTest {
         } finally {
             FileUtil.deleteFile(config);
         }
+    }
+
+    @Test
+    public void testRun_withJavaOptions()
+            throws DeviceNotAvailableException, ConfigurationException, IOException {
+        mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        final File javaBinary = new File(mRootDir, "jdk/bin/java");
+        new File(mRootDir, "jdk/bin").mkdirs();
+        javaBinary.createNewFile();
+        final File tfJar = new File(mRootDir, "tradefed.jar");
+        tfJar.createNewFile();
+        mOptionSetter.setOptionValue("cluster:env-var", "JAVA_HOME", "${TF_WORK_DIR}/jdk");
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", "${TF_WORK_DIR}/tradefed.jar");
+        mOptionSetter.setOptionValue("cluster:jvm-option", "-jvmOption1");
+        mOptionSetter.setOptionValue("cluster:jvm-option", "-jvmOption2");
+        mOptionSetter.setOptionValue("cluster:jvm-option", "-jvmOption3");
+        mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
+        mOptionSetter.setOptionValue("cluster:java-property", "BAR", "${TF_WORK_DIR}/bar");
+        mOptionSetter.setOptionValue("cluster:java-property", "ZZZ", "${TF_WORK_DIR}/zzz");
+        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
+        final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
+        when(mMockRunUtil.runTimedCmdWithInput(
+                        Mockito.anyLong(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        Mockito.<String[]>any()))
+                .thenReturn(mockCommandResult);
+        Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
+
+        mLauncher.run(mMockTestInformation, mMockListener);
+
+        Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
+        Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
+        Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
+        Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfJar.getAbsolutePath());
+        Mockito.verify(mMockRunUtil).setEnvVariable("ANDROID_SERIALS", DEVICE_SERIAL);
+        Mockito.verify(mMockRunUtil)
+                .runTimedCmdWithInput(
+                        Mockito.eq(10000L),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        asMatchers(
+                                new String[] {
+                                    javaBinary.getAbsolutePath(),
+                                    "-cp",
+                                    tfJar.getAbsolutePath(),
+                                    "-jvmOption1",
+                                    "-jvmOption2",
+                                    "-jvmOption3",
+                                    "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
+                                    "-DBAR=" + mRootDir.getAbsolutePath() + "/bar",
+                                    "-DZZZ=" + mRootDir.getAbsolutePath() + "/zzz",
+                                    "com.android.tradefed.command.CommandRunner",
+                                    COMMAND,
+                                    "--serial",
+                                    DEVICE_SERIAL,
+                                }));
     }
 }

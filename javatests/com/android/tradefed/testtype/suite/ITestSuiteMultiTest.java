@@ -15,6 +15,11 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -34,11 +39,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,17 +62,17 @@ public class ITestSuiteMultiTest {
     private static final String DEVICE_NAME_2 = "device2";
 
     private ITestSuite mTestSuite;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
     private IInvocationContext mContext;
     private TestInformation mTestInfo;
-    private ITestDevice mMockDevice1;
-    private IBuildInfo mMockBuildInfo1;
-    private ITestDevice mMockDevice2;
-    private IBuildInfo mMockBuildInfo2;
+    @Mock ITestDevice mMockDevice1;
+    @Mock IBuildInfo mMockBuildInfo1;
+    @Mock ITestDevice mMockDevice2;
+    @Mock IBuildInfo mMockBuildInfo2;
 
-    private ITargetPreparer mMockTargetPrep;
+    @Mock ITargetPreparer mMockTargetPrep;
     private IConfiguration mStubMainConfiguration;
-    private ILogSaver mMockLogSaver;
+    @Mock ILogSaver mMockLogSaver;
 
     static class TestSuiteMultiDeviceImpl extends ITestSuite {
         private int mNumTests = 1;
@@ -110,26 +117,21 @@ public class ITestSuiteMultiTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockTargetPrep = EasyMock.createMock(ITargetPreparer.class);
+        MockitoAnnotations.initMocks(this);
 
         mTestSuite = new TestSuiteMultiDeviceImpl(2, mMockTargetPrep);
 
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         // 2 devices and 2 builds
-        mMockDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice1.getSerialNumber()).andStubReturn("SERIAL1");
-        EasyMock.expect(mMockDevice1.getDeviceDate()).andReturn(0L).anyTimes();
-        EasyMock.expect(mMockDevice1.getIDevice())
-                .andStubReturn(EasyMock.createMock(IDevice.class));
-        mMockBuildInfo1 = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo1.getRemoteFiles()).andReturn(null).once();
-        mMockDevice2 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice2.getSerialNumber()).andStubReturn("SERIAL2");
-        EasyMock.expect(mMockDevice2.getDeviceDate()).andReturn(0L).anyTimes();
-        EasyMock.expect(mMockDevice2.getIDevice())
-                .andStubReturn(EasyMock.createMock(IDevice.class));
-        mMockBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
-        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+        when(mMockDevice1.getSerialNumber()).thenReturn("SERIAL1");
+        when(mMockDevice1.getDeviceDate()).thenReturn(0L);
+        when(mMockDevice1.getIDevice()).thenReturn(mock(IDevice.class));
+
+        when(mMockBuildInfo1.getRemoteFiles()).thenReturn(null);
+
+        when(mMockDevice2.getSerialNumber()).thenReturn("SERIAL2");
+        when(mMockDevice2.getDeviceDate()).thenReturn(0L);
+        when(mMockDevice2.getIDevice()).thenReturn(mock(IDevice.class));
+
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
 
@@ -154,40 +156,31 @@ public class ITestSuiteMultiTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
 
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq("test1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
+
         TestDescription test1 =
                 new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test0");
-        mMockListener.testStarted(test1, 0L);
-        mMockListener.testEnded(test1, 5L, new HashMap<String, Metric>());
+
         TestDescription test2 =
                 new TestDescription(MultiDeviceStubTest.class.getSimpleName(), "test1");
-        mMockListener.testStarted(test2, 0L);
-        mMockListener.testEnded(test2, 5L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testModuleEnded();
 
         // Target preparation is triggered against the preparer in the second device.
-        EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(EasyMock.anyObject());
-        EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
+        when(mMockTargetPrep.isDisabled()).thenReturn(false);
+        when(mMockTargetPrep.isTearDownDisabled()).thenReturn(true);
 
-        EasyMock.replay(
-                mMockListener,
-                mMockBuildInfo1,
-                mMockBuildInfo2,
-                mMockDevice1,
-                mMockDevice2,
-                mMockTargetPrep);
         mTestSuite.run(mTestInfo, mMockListener);
-        EasyMock.verify(
-                mMockListener,
-                mMockBuildInfo1,
-                mMockBuildInfo2,
-                mMockDevice1,
-                mMockDevice2,
-                mMockTargetPrep);
+        verify(mMockTargetPrep, times(2)).isDisabled();
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("test1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testStarted(test1, 0L);
+        verify(mMockListener).testEnded(test1, 5L, new HashMap<String, Metric>());
+        verify(mMockListener).testStarted(test2, 0L);
+        verify(mMockListener).testEnded(test2, 5L, new HashMap<String, Metric>());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
+        verify(mMockTargetPrep).setUp(Mockito.any());
+        verify(mMockBuildInfo1, times(1)).getRemoteFiles();
     }
 }

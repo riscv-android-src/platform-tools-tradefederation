@@ -15,26 +15,31 @@
  */
 package com.android.tradefed.log;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
 
-import junit.framework.TestCase;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-import org.easymock.EasyMock;
-
-/**
- * Unit tests for {@link LogRegistry}.
- */
-public class LogRegistryTest extends TestCase {
+/** Unit tests for {@link LogRegistry}. */
+@RunWith(JUnit4.class)
+public class LogRegistryTest {
 
     private static final String LOG_TAG = "LogRegistryTest";
 
     private LogRegistry mLogRegistry;
     private ThreadGroup mStubThreadGroup;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
+
         mStubThreadGroup = new ThreadGroup("LogRegistryTest");
         mLogRegistry =
                 new LogRegistry() {
@@ -52,15 +57,16 @@ public class LogRegistryTest extends TestCase {
                 };
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
+    @After
+    public void tearDown() throws Exception {
+
         mLogRegistry.closeAndRemoveAllLogs();
     }
 
     /**
      * Tests that {@link LogRegistry#getLogger} returns the logger that was previously registered.
      */
+    @Test
     public void testGetLogger() {
         StdoutLogger stdoutLogger = new StdoutLogger();
         mLogRegistry.registerLogger(stdoutLogger);
@@ -74,15 +80,14 @@ public class LogRegistryTest extends TestCase {
      * Tests that {@link LogRegistry#printLog} calls into the underlying logger's printLog method
      * when the logging level is appropriate for printing.
      */
+    @Test
     public void testPrintLog_sameLogLevel() {
         String testMessage = "This is a test message.";
-        ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
+        ILeveledLogOutput mockLogger = mock(ILeveledLogOutput.class);
         mLogRegistry.registerLogger(mockLogger);
 
-        EasyMock.expect(mockLogger.getLogLevel()).andReturn(LogLevel.VERBOSE);
-        mockLogger.printLog(LogLevel.VERBOSE, LOG_TAG, testMessage);
+        when(mockLogger.getLogLevel()).thenReturn(LogLevel.VERBOSE);
 
-        EasyMock.replay(mockLogger);
         mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, testMessage);
         mLogRegistry.unregisterLogger();
     }
@@ -91,15 +96,15 @@ public class LogRegistryTest extends TestCase {
      * Tests that {@link LogRegistry#printLog} does not call into the underlying logger's printLog
      * method when the logging level is lower than necessary to log.
      */
+    @Test
     public void testPrintLog_lowerLogLevel() {
         String testMessage = "This is a test message.";
-        ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
+        ILeveledLogOutput mockLogger = mock(ILeveledLogOutput.class);
         mLogRegistry.registerLogger(mockLogger);
 
         // Setting LogLevel == ERROR will let everything print
-        EasyMock.expect(mockLogger.getLogLevel()).andReturn(LogLevel.ERROR);
+        when(mockLogger.getLogLevel()).thenReturn(LogLevel.ERROR);
 
-        EasyMock.replay(mockLogger);
         mLogRegistry.printLog(LogLevel.VERBOSE, LOG_TAG, testMessage);
         mLogRegistry.unregisterLogger();
     }
@@ -108,11 +113,13 @@ public class LogRegistryTest extends TestCase {
      * Tests for ensuring new threads spawned without an explicit ThreadGroup will inherit the same
      * logger as the parent's logger.
      */
+    @Test
     public void testThreadedLogging() throws Exception {
         final String testMessage = "Another test message!";
-        final ILeveledLogOutput mockLogger = EasyMock.createMock(ILeveledLogOutput.class);
+        final ILeveledLogOutput mockLogger = mock(ILeveledLogOutput.class);
 
-        // Simple class that will run in a thread, simulating a new thread spawed inside an Invocation
+        // Simple class that will run in a thread, simulating a new thread spawed inside an
+        // Invocation
         class SecondThread implements Runnable {
             @Override
             public void run() {
@@ -125,10 +132,10 @@ public class LogRegistryTest extends TestCase {
             public void run() {
                 mLogRegistry.registerLogger(mockLogger);
                 Log.v(LOG_TAG, testMessage);
-                Thread secondThread = new Thread(new SecondThread());  // no explicit ThreadGroup
+                Thread secondThread = new Thread(new SecondThread()); // no explicit ThreadGroup
                 secondThread.start();
                 try {
-                    secondThread.join();  // threaded, but force serialization for testing
+                    secondThread.join(); // threaded, but force serialization for testing
                 } catch (InterruptedException ie) {
                     throw new RuntimeException(ie);
                 } finally {
@@ -138,13 +145,10 @@ public class LogRegistryTest extends TestCase {
         }
 
         // first thread calls
-        EasyMock.expect(mockLogger.getLogLevel()).andReturn(LogLevel.VERBOSE);
-        mockLogger.printLog(LogLevel.VERBOSE, LOG_TAG, testMessage);
-        // second thread should inherit same logger
-        EasyMock.expect(mockLogger.getLogLevel()).andReturn(LogLevel.ERROR);
-        mockLogger.printLog(LogLevel.ERROR, LOG_TAG, testMessage);
+        when(mockLogger.getLogLevel()).thenReturn(LogLevel.VERBOSE);
 
-        EasyMock.replay(mockLogger);
+        // second thread should inherit same logger
+        when(mockLogger.getLogLevel()).thenReturn(LogLevel.ERROR);
 
         ThreadGroup tg = new ThreadGroup("TestThreadGroup");
         Thread firstThread = new Thread(tg, new FirstThread());

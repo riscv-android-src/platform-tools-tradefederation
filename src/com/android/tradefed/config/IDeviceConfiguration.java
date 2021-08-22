@@ -59,6 +59,18 @@ public interface IDeviceConfiguration {
     public void addSpecificConfig(Object config) throws ConfigurationException;
 
     /**
+     * Pass one of the allowed objects that the Configuration Holder can keep track of.
+     *
+     * <p>Complete list of allowed objects are: {@link IBuildProvider}, {@link ITargetPreparer},
+     * {@link IDeviceRecovery}, {@link IDeviceSelection}, {@link TestDeviceOptions}
+     *
+     * @param config object from a type above.
+     * @param type the type of configuration object being passed.
+     * @throws ConfigurationException in case the object passed doesn't match the allowed types.
+     */
+    public void addSpecificConfig(Object config, String type) throws ConfigurationException;
+
+    /**
      * Remove the specified object type from the device configuration holder.
      *
      * @param type The type of the object to remove.
@@ -84,6 +96,9 @@ public interface IDeviceConfiguration {
      * Return a list of {@link ITargetPreparer} that the device configuration holder has.
      */
     public List<ITargetPreparer> getTargetPreparers();
+
+    /** Return a list of {@link ITargetPreparer} that the device configuration holder has. */
+    public List<ITargetPreparer> getLabPreparers();
 
     /**
      * Return {@link IDeviceRecovery} that the device configuration holder has.

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="**/Android.bp" kind="src" path="src"/>
-	<classpathentry excluding="**/Android.bp|OnePassingOneFailingTest/|easymock/|mockito/|objenesis/|res/|src/|test_jar/" kind="src" path=""/>
+	<classpathentry excluding="**/Android.bp|OnePassingOneFailingTest/|easymock/|mockito/|objenesis/|res/|test_jar/" kind="src" path=""/>
 	<classpathentry kind="src" path="OnePassingOneFailingTest"/>
 	<classpathentry kind="src" path="test_jar"/>
 	<classpathentry kind="src" path="res"/>

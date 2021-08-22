@@ -18,6 +18,10 @@ package com.android.tradefed.util.testmapping;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.util.FileUtil;
@@ -25,7 +29,6 @@ import com.android.tradefed.util.ZipUtil;
 
 import com.google.common.collect.Sets;
 
-import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -142,6 +145,7 @@ public class TestMappingTest {
     @Test
     public void testGetTests() throws Exception {
         File tempDir = null;
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         try {
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -161,10 +165,7 @@ public class TestMappingTest {
 
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
-            IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile).times(2);
-
-            EasyMock.replay(mockBuildInfo);
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             // Ensure the static variable doesn't have any relative path configured.
             TestMapping.setTestMappingPaths(new ArrayList<String>());
@@ -184,6 +185,7 @@ public class TestMappingTest {
             }
             assertTrue(!names.contains("suite/stub1"));
             assertTrue(names.contains("test1"));
+            verify(mockBuildInfo, times(2)).getFile(TEST_MAPPINGS_ZIP);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -196,6 +198,7 @@ public class TestMappingTest {
     @Test
     public void testGetTests_matchKeywords() throws Exception {
         File tempDir = null;
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         try {
             tempDir = FileUtil.createTempDir("test_mapping");
 
@@ -215,16 +218,14 @@ public class TestMappingTest {
 
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
-            IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile).times(2);
-
-            EasyMock.replay(mockBuildInfo);
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             Set<TestInfo> tests =
                     TestMapping.getTests(
                             mockBuildInfo, "presubmit", false, Sets.newHashSet("key_1"));
             assertEquals(1, tests.size());
             assertEquals("suite/stub2", tests.iterator().next().getName());
+            verify(mockBuildInfo, times(1)).getFile(TEST_MAPPINGS_ZIP);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -488,7 +489,9 @@ public class TestMappingTest {
         assertTrue(new HashSet<TestOption>(test1.getOptions()).contains(option2));
     }
 
-    /** Test for {@link TestMapping#getAllTests()} for loading tests from test_mappings directory. */
+    /**
+     * Test for {@link TestMapping#getAllTests()} for loading tests from test_mappings directory.
+     */
     @Test
     public void testGetAllTests() throws Exception {
         File tempDir = null;
@@ -541,7 +544,7 @@ public class TestMappingTest {
             resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, tempDir, DISABLED_PRESUBMIT_TESTS);
             List<File> filesToZip =
-                Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
 
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
@@ -589,7 +592,6 @@ public class TestMappingTest {
 
             disabledTests = TestMapping.getDisabledTests(tempDirPath, "othertype");
             assertEquals(0, disabledTests.size());
-
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -611,7 +613,7 @@ public class TestMappingTest {
         assertEquals(TestMapping.removeComments(jsonString), goldenString);
     }
 
-    private String getJsonStringByName(String fileName) throws Exception  {
+    private String getJsonStringByName(String fileName) throws Exception {
         File tempDir = null;
         try {
             tempDir = FileUtil.createTempDir("test_mapping");

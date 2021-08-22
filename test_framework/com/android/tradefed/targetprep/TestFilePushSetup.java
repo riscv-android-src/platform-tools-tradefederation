@@ -106,6 +106,10 @@ public class TestFilePushSetup extends BaseTargetPreparer {
             if (testAppFile.exists()) {
                 return testAppFile;
             }
+            testAppFile = FileUtil.findFile(dir, fileName);
+            if (testAppFile != null && testAppFile.exists()) {
+                return testAppFile;
+            }
         }
         return null;
     }

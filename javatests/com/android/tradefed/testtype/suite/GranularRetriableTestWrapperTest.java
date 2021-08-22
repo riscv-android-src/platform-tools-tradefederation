@@ -25,6 +25,7 @@ import static org.mockito.Mockito.doReturn;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
@@ -46,6 +47,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -84,7 +86,6 @@ public class GranularRetriableTestWrapperTest {
     private class BasicFakeTest implements IRemoteTest {
 
         protected ArrayList<TestDescription> mTestCases;
-        protected Set<String> mShouldRun = new HashSet<>();
         protected Map<TestDescription, Integer> mBecomePass = new HashMap<>();
         protected Map<TestDescription, Boolean> mShouldFail;
         private String mRunFailure = null;
@@ -124,12 +125,16 @@ public class GranularRetriableTestWrapperTest {
             mClearRunFailureAttempt = clearRunFailure;
         }
 
+        public boolean shouldRun(TestDescription test) {
+            return true;
+        }
+
         @Override
         public void run(TestInformation testInfo, ITestInvocationListener listener)
                 throws DeviceUnresponsiveException {
             listener.testRunStarted(RUN_NAME, mTestCases.size());
             for (TestDescription td : mTestCases) {
-                if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
+                if (!shouldRun(td)) {
                     continue;
                 }
                 listener.testStarted(td);
@@ -143,13 +148,12 @@ public class GranularRetriableTestWrapperTest {
                     }
                 }
                 listener.testEnded(td, new HashMap<String, Metric>());
-
-                if (mRunFailure != null) {
-                    listener.testRunFailed(mRunFailure);
-                    if (mClearRunFailureAttempt != null
-                            && mClearRunFailureAttempt == mAttempts + 1) {
-                        mRunFailure = null;
-                    }
+            }
+            if (mRunFailure != null) {
+                listener.testRunFailed(mRunFailure);
+                if (mClearRunFailureAttempt != null
+                        && mClearRunFailureAttempt == mAttempts + 1) {
+                    mRunFailure = null;
                 }
             }
             listener.testRunEnded(100000, new HashMap<String, Metric>());
@@ -160,6 +164,8 @@ public class GranularRetriableTestWrapperTest {
     private class FakeTest extends BasicFakeTest implements ITestFilterReceiver, IDeviceTest {
 
         private ITestDevice mDevice;
+        private Set<String> mIncludeFilters = new HashSet<>();
+        private Set<String> mExcludeFilters = new HashSet<>();
 
         public FakeTest(ArrayList<TestDescription> testCases) {
             super(testCases);
@@ -170,36 +176,55 @@ public class GranularRetriableTestWrapperTest {
         }
 
         @Override
-        public void addIncludeFilter(String filter) {
-            mShouldRun.add(filter);
+        public boolean shouldRun(TestDescription test) {
+            if (mExcludeFilters.contains(test.toString())) {
+                return false;
+            }
+            if (!mIncludeFilters.isEmpty() && !mIncludeFilters.contains(test.toString())) {
+                return false;
+            }
+            return true;
         }
 
         @Override
-        public void addAllIncludeFilters(Set<String> filters) {}
+        public void addIncludeFilter(String filter) {
+            mIncludeFilters.add(filter);
+        }
 
         @Override
-        public void addExcludeFilter(String filters) {}
+        public void addAllIncludeFilters(Set<String> filters) {
+            mIncludeFilters.addAll(filters);
+        }
 
         @Override
-        public void addAllExcludeFilters(Set<String> filters) {}
+        public void addExcludeFilter(String filter) {
+            mExcludeFilters.add(filter);
+        }
+
+        @Override
+        public void addAllExcludeFilters(Set<String> filters) {
+            mExcludeFilters.addAll(filters);
+        }
 
         @Override
         public void clearIncludeFilters() {
-            mShouldRun.clear();
+            mIncludeFilters.clear();
         }
 
         @Override
         public Set<String> getIncludeFilters() {
-            return mShouldRun;
+            return mIncludeFilters;
         }
 
         @Override
         public Set<String> getExcludeFilters() {
-            return new HashSet<>();
+            return mExcludeFilters;
         }
 
         @Override
-        public void clearExcludeFilters() {}
+        public void clearExcludeFilters() {
+            mExcludeFilters.clear();
+        }
 
         @Override
         public void setDevice(ITestDevice device) {
@@ -245,7 +270,7 @@ public class GranularRetriableTestWrapperTest {
                         continue;
                     }
                     TestDescription td = testCases.get(idx);
-                    if (!mShouldRun.isEmpty() && !mShouldRun.contains(td.toString())) {
+                    if (!shouldRun(td)) {
                         continue;
                     }
                     listener.testRunStarted(runName, testCases.size());
@@ -672,7 +697,11 @@ public class GranularRetriableTestWrapperTest {
             // All attempts are run failures
             assertTrue(res.isRunFailure());
             // All tests cases are rerun each time.
-            assertEquals(2, res.getNumCompleteTests());
+            if (i == 0) {
+                assertEquals(2, res.getNumCompleteTests());
+            } else {
+                assertEquals(0, res.getNumCompleteTests());
+            }
         }
 
         // No Test cases tracking since it was a run retry.
@@ -707,12 +736,16 @@ public class GranularRetriableTestWrapperTest {
             // All attempts are run failures until now
             assertTrue(res.isRunFailure());
             // All tests cases are rerun each time.
-            assertEquals(2, res.getNumCompleteTests());
+            if (i == 0) {
+                assertEquals(2, res.getNumCompleteTests());
+            } else {
+                assertEquals(0, res.getNumCompleteTests());
+            }
         }
         TestRunResult lastRes = allResults.get(3);
         assertFalse(lastRes.isRunFailure());
         // All tests cases are rerun each time.
-        assertEquals(2, lastRes.getNumCompleteTests());
+        assertEquals(0, lastRes.getNumCompleteTests());
 
         // No Test cases tracking since it was a run retry.
         RetryStatistics stats = mDecision.getRetryStatistics();
@@ -835,13 +868,17 @@ public class GranularRetriableTestWrapperTest {
             // All attempts are run failures until now
             assertTrue(res.isRunFailure());
             // All tests cases are rerun each time.
-            assertEquals(2, res.getNumCompleteTests());
+            if (i == 0) {
+                assertEquals(2, res.getNumCompleteTests());
+            } else {
+                assertEquals(1, res.getNumCompleteTests());
+            }
         }
         // At attempt 4 the run become pass but we continue retrying because of test case failure.
         TestRunResult lastRes = allResults.get(3);
         assertFalse(lastRes.isRunFailure());
         // All tests cases are rerun each time.
-        assertEquals(2, lastRes.getNumCompleteTests());
+        assertEquals(1, lastRes.getNumCompleteTests());
         assertEquals(1, lastRes.getFailedTests().size());
         assertTrue(lastRes.getRunProtoMetrics().containsKey("called"));
         assertFalse(lastRes.getRunProtoMetrics().containsKey("not-called"));
@@ -926,18 +963,26 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset multi-devices at the last intra-module retry. */
     @Test
     public void testIntraModuleRun_resetMultiDevicesAtLastIntraModuleRetry() throws Exception {
-        IRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                // Do nothing to fake success
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice noneAVDDevice = EasyMock.createMock(ITestDevice.class);
 
         RemoteAndroidVirtualDevice avdDevice = Mockito.mock(RemoteAndroidVirtualDevice.class);
-        Mockito.when(avdDevice.powerwashGce()).thenReturn(true);
 
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         // Should call suite level preparers.
@@ -961,12 +1006,23 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset device at the last intra-module retry failed due to preparer failure. */
     @Test
     public void testIntraModuleRun_resetFailed_preparerFailure() throws Exception {
-        IRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException(
+                        "Reset failure", "device1",
+                        DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
 
@@ -987,19 +1043,32 @@ public class GranularRetriableTestWrapperTest {
             granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
             fail("Exception should be raised when reset is failed.");
         } catch (DeviceNotAvailableException e) {
-            assertTrue(e.getMessage().startsWith("Failed to reset devices before retry: "));
+            assertTrue(e.getMessage().contains("Reset failure"));
         }
     }
 
     /** Test to reset device at the last intra-module retry failed due to reset failure. */
     @Test
     public void testIntraModuleRun_resetFailed_powerwashFailure() throws Exception {
-        IRetryDecision decision = new BaseRetryDecision();
+        ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
+        Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException(
+                        "Failed to powerwash device: device1", "device1",
+                        DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
 
@@ -1009,7 +1078,9 @@ public class GranularRetriableTestWrapperTest {
 
         test.setDevice(device);
         mModuleInvocationContext.addAllocatedDevice("default-device1", device);
-        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 3, new ArrayList<>(), module);
         granularTestWrapper.setRetryDecision(decision);
 
         try {

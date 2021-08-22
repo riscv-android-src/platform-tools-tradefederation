@@ -166,7 +166,8 @@ public class SandboxConfigDump {
                         /* Don't print unchanged options */ false);
             } else {
                 // FULL_XML in that case.
-                config.dumpXml(pw);
+                config.dumpXml(pw, new ArrayList<>(), true,
+                        /* Don't print unchanged options */ false);
             }
         } catch (ConfigurationException | IOException e) {
             e.printStackTrace();

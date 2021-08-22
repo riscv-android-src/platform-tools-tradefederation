@@ -16,7 +16,10 @@
 package com.android.tradefed.result;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ITestLogger;
@@ -35,12 +38,14 @@ import java.util.Collections;
 public class ReportPassedTestsTest {
 
     private String mExpectedString;
+    private boolean mTestLogCalled = false;
     private ITestLogger mLogger;
 
     private ReportPassedTests mReporter =
             new ReportPassedTests() {
                 @Override
                 void testLog(String toBeLogged) {
+                    mTestLogCalled = true;
                     assertEquals(mExpectedString, toBeLogged);
                 }
             };
@@ -63,6 +68,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -75,6 +81,18 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_singleRunFailure() {
+        mExpectedString = "";
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+        assertFalse(mTestLogCalled);
     }
 
     @Test
@@ -93,6 +111,33 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_runFailure_withPassedTestCases() {
+        TestDescription tid = new TestDescription("class", "testName");
+        TestDescription tid2 = new TestDescription("class", "testName2");
+        TestDescription failed = new TestDescription("class", "testName3");
+        TestDescription assum = new TestDescription("class", "testName4");
+        mExpectedString = "run-name class#testName\nrun-name class#testName2\n"
+                + "run-name class#testName4\n";
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testStarted(tid2);
+        mReporter.testEnded(tid2, Collections.emptyMap());
+        mReporter.testStarted(failed);
+        mReporter.testFailed(failed, "failed");
+        mReporter.testEnded(failed, Collections.emptyMap());
+        mReporter.testStarted(assum);
+        mReporter.testAssumptionFailure(assum, "assum fail");
+        mReporter.testEnded(assum, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -106,6 +151,97 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_module_shards() {
+        Configuration config = new Configuration("name", "description");
+        config.getCommandOptions().setShardIndex(1);
+        mReporter.setConfiguration(config);
+        mExpectedString = "shard_1 x86 module1\nshard_1 run-name2\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+        mReporter.testRunStarted("run-name2", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_singleModuleFailure() {
+        mExpectedString = "";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertFalse(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_moduleFailure_withPassedTestCases_shards() {
+        Configuration config = new Configuration("name", "description");
+        config.getCommandOptions().setShardIndex(1);
+        mReporter.setConfiguration(config);
+        TestDescription tid = new TestDescription("class", "testName");
+        TestDescription tid2 = new TestDescription("class", "testName2");
+        TestDescription failed = new TestDescription("class", "testName3");
+        TestDescription assum = new TestDescription("class", "testName4");
+        mExpectedString =
+             "shard_1 x86 module1 class#testName\nshard_1 x86 module1 class#testName2\n"
+                + "shard_1 x86 module1 class#testName4\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testStarted(tid2);
+        mReporter.testEnded(tid2, Collections.emptyMap());
+        mReporter.testStarted(failed);
+        mReporter.testFailed(failed, "failed");
+        mReporter.testEnded(failed, Collections.emptyMap());
+        mReporter.testStarted(assum);
+        mReporter.testAssumptionFailure(assum, "assum fail");
+        mReporter.testEnded(assum, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_moduleFailure_withPassedTestCases() {
+        TestDescription tid = new TestDescription("class", "testName");
+        TestDescription tid2 = new TestDescription("class", "testName2");
+        TestDescription failed = new TestDescription("class", "testName3");
+        TestDescription assum = new TestDescription("class", "testName4");
+        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\n"
+                + "x86 module1 class#testName4\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testStarted(tid2);
+        mReporter.testEnded(tid2, Collections.emptyMap());
+        mReporter.testStarted(failed);
+        mReporter.testFailed(failed, "failed");
+        mReporter.testEnded(failed, Collections.emptyMap());
+        mReporter.testStarted(assum);
+        mReporter.testAssumptionFailure(assum, "assum fail");
+        mReporter.testEnded(assum, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -121,6 +257,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -137,6 +274,40 @@ public class ReportPassedTestsTest {
         mReporter.testModuleEnded();
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_emptyModules() {
+        mExpectedString = "x86 module1\nx86_64 module1\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+        // Second empty module
+        mReporter.testModuleStarted(createModule("x86_64 module1"));
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_emptyFailedModules() {
+        mExpectedString = "x86 module1\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+        // Second empty module
+        mReporter.testModuleStarted(createModule("x86_64 module1"));
+        mReporter.testRunStarted("failed-name", 0);
+        mReporter.testRunFailed(FailureDescription.create("placeholder failure"));
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     private IInvocationContext createModule(String id) {

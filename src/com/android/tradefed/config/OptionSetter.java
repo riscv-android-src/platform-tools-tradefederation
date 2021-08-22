@@ -539,7 +539,12 @@ public class OptionSetter {
                 }
                 OptionUpdateRule rule = option.updateRule();
                 if (rule.shouldUpdate(optionName, optionSource, field, value)) {
-                    field.set(optionSource, value);
+                    Object curValue = field.get(optionSource);
+                    if (value == null || value.equals(curValue)) {
+                        fieldWasSet = false;
+                    } else {
+                        field.set(optionSource, value);
+                    }
                 } else {
                     fieldWasSet = false;
                 }
@@ -786,7 +791,7 @@ public class OptionSetter {
      * @param optionClass the {@link Class} to search
      * @return a {@link Collection} of fields annotated with {@link Option}
      */
-    static Collection<Field> getOptionFieldsForClass(final Class<?> optionClass) {
+    public static Collection<Field> getOptionFieldsForClass(final Class<?> optionClass) {
         Collection<Field> fieldList = new ArrayList<Field>();
         buildOptionFieldsForClass(optionClass, fieldList);
         return fieldList;
@@ -851,7 +856,7 @@ public class OptionSetter {
      * @param optionObject the {@link Object} to get field's value from.
      * @return the field's value as a {@link Object}, or <code>null</code>
      */
-    static Object getFieldValue(Field field, Object optionObject) {
+    public static Object getFieldValue(Field field, Object optionObject) {
         try {
             field.setAccessible(true);
             return field.get(optionObject);

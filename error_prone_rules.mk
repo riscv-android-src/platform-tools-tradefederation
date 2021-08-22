@@ -22,6 +22,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:DeadException:ERROR \
                           -Xep:EqualsIncompatibleType:ERROR \
                           -Xep:ExtendingJUnitAssert:ERROR \
+                          -Xep:FallThrough:ERROR \
                           -Xep:FormatString:ERROR \
                           -Xep:GetClassOnClass:ERROR \
                           -Xep:IdentityBinaryExpression:ERROR \
@@ -29,6 +30,8 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:JUnit4TestNotRun:ERROR \
                           -Xep:JUnit4ClassUsedInJUnit3:ERROR \
                           -Xep:JUnitAmbiguousTestClass:ERROR \
+                          -Xep:LongLiteralLowerCaseSuffix:ERROR \
+                          -Xep:MissingCasesInEnumSwitch:ERROR \
                           -Xep:MissingFail:ERROR \
                           -Xep:MissingOverride:ERROR \
                           -Xep:ModifiedButNotUsed:ERROR \
@@ -41,6 +44,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ReturnValueIgnored:ERROR \
                           -Xep:SelfEquals:ERROR \
                           -Xep:SizeGreaterThanOrEqualsZero:ERROR \
+                          -Xep:StreamResourceLeak:ERROR \
                           -Xep:TryFailThrowable:ERROR \
                           -Xep:UnnecessaryParentheses:ERROR \
                           -Xep:UseCorrectAssertInTests:ERROR

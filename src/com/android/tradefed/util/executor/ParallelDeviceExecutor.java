@@ -78,7 +78,7 @@ public class ParallelDeviceExecutor<V> {
             CLog.e(e);
             mErrors.add(e);
         } finally {
-            executor.shutdown();
+            executor.shutdownNow();
         }
         return results;
     }

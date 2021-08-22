@@ -29,6 +29,8 @@ import com.android.tradefed.util.UniqueMultiMap;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.json.JSONException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -165,7 +167,7 @@ public class ClusterCommandConfigBuilder {
      *
      * @return a {@link File} object for a generated configuration file.
      */
-    public File build() throws ConfigurationException, IOException {
+    public File build() throws ConfigurationException, IOException, JSONException {
         assert mCommand != null;
         assert mTestEnvironment != null;
         assert mTestResources != null;
@@ -293,21 +295,14 @@ public class ClusterCommandConfigBuilder {
         testResources.addAll(mTestResources);
         testResources.addAll(mTestContext.getTestResources());
         for (final TestResource resource : testResources) {
-            config.injectOptionValue(
-                    "cluster:test-resource", resource.getName(), resource.getUrl());
-            if (resource.getDecompress()) {
-                config.injectOptionValue(
-                        "cluster:decompress-test-resource",
-                        resource.getName(),
-                        resource.getDecompressDir());
-            }
+            config.injectOptionValue("cluster:test-resource", resource.toJson().toString());
         }
 
         // Inject any extra options into the configuration
         UniqueMultiMap<String, String> extraOptions = mCommand.getExtraOptions();
         for (String key : extraOptions.keySet()) {
             for (String value : extraOptions.get(key)) {
-                config.injectOptionValue(key, value);
+                config.injectOptionValue(key, StringUtil.expand(value, envVars));
             }
         }
 

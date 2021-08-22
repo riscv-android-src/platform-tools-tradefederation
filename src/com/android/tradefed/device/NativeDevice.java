@@ -103,7 +103,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
@@ -201,14 +200,6 @@ public class NativeDevice implements IManagedTestDevice {
     private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
     private long mLongCmdTimeout = 25 * 60 * 1000L;
-
-    /**
-     * The delimiter that separates the actual shell output and the exit status.
-     *
-     * <p>Used to determine the exit status of the command run by adb shell for devices that do not
-     * support shell_v2.
-     */
-    private static final String EXIT_STATUS_DELIMITER = "x";
 
     private IDevice mIDevice;
     private IDeviceRecovery mRecovery = new WaitDeviceRecovery();
@@ -322,11 +313,18 @@ public class NativeDevice implements IManagedTestDevice {
         private long mTimeout;
         private File mPipeAsInput; // Used in pushFile, uses local file as input to "content write"
         private OutputStream mPipeToOutput; // Used in pullFile, to pipe content from "content read"
+        private OutputStream mPipeToError;
 
-        AdbShellAction(String[] cmd, File pipeAsInput, OutputStream pipeToOutput, long timeout) {
+        AdbShellAction(
+                String[] cmd,
+                File pipeAsInput,
+                OutputStream pipeToOutput,
+                OutputStream pipeToError,
+                long timeout) {
             mCmd = cmd;
             mPipeAsInput = pipeAsInput;
             mPipeToOutput = pipeToOutput;
+            mPipeToError = pipeToError;
             mTimeout = timeout;
         }
 
@@ -335,8 +333,7 @@ public class NativeDevice implements IManagedTestDevice {
             if (mPipeAsInput != null) {
                 mResult = getRunUtil().runTimedCmdWithInputRedirect(mTimeout, mPipeAsInput, mCmd);
             } else {
-                mResult =
-                        getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, /* stderr= */ null, mCmd);
+                mResult = getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, mPipeToError, mCmd);
             }
             if (mResult.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException(mResult.getStderr());
@@ -589,15 +586,6 @@ public class NativeDevice implements IManagedTestDevice {
                 "Something went wrong went setting property %s (command: %s): %s",
                 propKey, setPropCmd, result.getStderr());
         return false;
-    }
-
-    /**
-     * Returns true if the device supports the adb shell V2 features.
-     *
-     * <p>Shell V2 features are required for calling any of the executeShellV2Command APIs.
-     */
-    protected boolean supportsShellV2() {
-        return getIDevice().supportsFeature(IDevice.Feature.SHELL_V2);
     }
 
     /**
@@ -929,40 +917,37 @@ public class NativeDevice implements IManagedTestDevice {
             final TimeUnit timeUnit,
             int retryAttempts)
             throws DeviceNotAvailableException {
-        // If the device does not support the v2 shell features. Exit status will not be propagated
-        // and stdout/stderr will be merged in stdout.
-        //
-        // There's nothing we can do to separate the two streams, but we can alter the command to
-        // retrieve the exit status.
-        //
-        // Note that this does *not* call `adb features` on each invocation. ddmlib caches all the
-        // adb features on the first query.
-        boolean parseExitStatus = !supportsShellV2();
+        return executeShellV2Command(
+                cmd,
+                pipeAsInput,
+                pipeToOutput,
+                /*pipeToError=*/ null,
+                maxTimeoutForCommand,
+                timeUnit,
+                retryAttempts);
+    }
 
-        final String[] fullCmd = buildAdbShellCommand(cmd, parseExitStatus);
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
+            String cmd,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
+            OutputStream pipeToError,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException {
+        final String[] fullCmd = buildAdbShellCommand(cmd);
         AdbShellAction adbActionV2 =
                 new AdbShellAction(
                         fullCmd,
                         pipeAsInput,
                         pipeToOutput,
+                        pipeToError,
                         timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
-        if (parseExitStatus) {
-            postProcessExitStatus(adbActionV2.mResult);
-        }
         return adbActionV2.mResult;
-    }
-
-    private void postProcessExitStatus(@Nonnull CommandResult result) {
-        String stdout = result.getStdout();
-        int delimiterIndex = stdout.lastIndexOf(EXIT_STATUS_DELIMITER);
-        String actualStdout = stdout.substring(0, delimiterIndex);
-        String exitStatusText = stdout.substring(delimiterIndex + 1);
-        result.setExitCode(Integer.parseUnsignedInt(exitStatusText.trim()));
-        result.setStdout(actualStdout);
-        if (result.getStatus() == CommandStatus.SUCCESS && result.getExitCode() != 0) {
-            result.setStatus(CommandStatus.FAILED);
-        }
     }
 
     /** {@inheritDoc} */
@@ -1306,10 +1291,16 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        return pushFileInternal(localFile, remoteFilePath, false);
+    }
+
+    @VisibleForTesting
+    boolean pushFileInternal(final File localFile, final String remoteFilePath,
+            boolean skipContentProvider) throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.PUSH_FILE_COUNT, 1);
         try {
-            if (isSdcardOrEmulated(remoteFilePath)) {
+            if (!skipContentProvider && isSdcardOrEmulated(remoteFilePath)) {
                 ContentProviderHandler handler = getContentProvider();
                 if (handler != null) {
                     return handler.pushFile(localFile, remoteFilePath);
@@ -1702,6 +1693,24 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pushDir(
             File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
             throws DeviceNotAvailableException {
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            Integer currentUser = getCurrentUser();
+            if (currentUser != 0) {
+                ContentProviderHandler handler = getContentProvider();
+                if (handler != null) {
+                    return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+                }
+            } else {
+                // Remove the special handling when content provider performance is better
+                CLog.d("Push without content provider for user '%s'", currentUser);
+            }
+        }
+        return pushDirInternal(localFileDir, deviceFilePath, excludedDirectories);
+    }
+
+    private boolean pushDirInternal(
+            File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
+            throws DeviceNotAvailableException {
         if (!localFileDir.isDirectory()) {
             CLog.e("file %s is not a directory", localFileDir.getAbsolutePath());
             return false;
@@ -1722,11 +1731,11 @@ public class NativeDevice implements IManagedTestDevice {
                     continue;
                 }
                 executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
-                if (!pushDir(childFile, remotePath, excludedDirectories)) {
+                if (!pushDirInternal(childFile, remotePath, excludedDirectories)) {
                     return false;
                 }
             } else if (childFile.isFile()) {
-                if (!pushFile(childFile, remotePath)) {
+                if (!pushFileInternal(childFile, remotePath, true)) {
                     return false;
                 }
             }
@@ -2168,24 +2177,15 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Builds the OS command for the given adb shell command session and args */
-    private String[] buildAdbShellCommand(String command, boolean forceExitStatusDetection) {
+    private String[] buildAdbShellCommand(String command) {
         // TODO: implement the shell v2 support in ddmlib itself.
         String[] commandArgs =
                 QuotationAwareTokenizer.tokenizeLine(
                         command,
                         /** No logging */
                         false);
-
-        String[] exitStatusProbe;
-        if (forceExitStatusDetection) {
-            exitStatusProbe = new String[] {";", "echo", EXIT_STATUS_DELIMITER + "$?"};
-        } else {
-            exitStatusProbe = new String[] {};
-        }
         return ArrayUtil.buildArray(
-                new String[] {"adb", "-s", getSerialNumber(), "shell"},
-                commandArgs,
-                exitStatusProbe);
+                new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
     }
 
     /**
@@ -5302,6 +5302,16 @@ public class NativeDevice implements IManagedTestDevice {
         return tombstones;
     }
 
+    @Override
+    public Set<DeviceFoldableState> getFoldableStates() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
+    }
+
+    @Override
+    public DeviceFoldableState getCurrentFoldableState() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {
@@ -5353,7 +5363,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Reset the flag for content provider setup in order to trigger it again. */
-    protected void resetContentProviderSetup() {
+    public void resetContentProviderSetup() {
         mShouldSkipContentProviderSetup = false;
     }
 

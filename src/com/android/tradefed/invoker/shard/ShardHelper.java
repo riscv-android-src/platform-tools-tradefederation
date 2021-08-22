@@ -36,6 +36,7 @@ import com.android.tradefed.result.IShardableListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -267,6 +268,9 @@ public class ShardHelper implements IShardHelper {
             deepCopy.getCommandOptions().setShardCount(null);
             deepCopy.getConfigurationDescription()
                     .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
+            // Remove parent shard server reference from the copy.
+            deepCopy.getConfigurationDescription().removeMetadata(
+                    TradefedFeatureServer.SERVER_REFERENCE);
             return deepCopy;
         } catch (ConfigurationException e) {
             throw new RuntimeException(

@@ -58,7 +58,7 @@ public class JSONFileKeyStoreFactory implements IKeyStoreFactory {
     private static final Object mLock = new Object();
 
     private JSONFileKeyStoreClient mCachedClient = null;
-    private long mLastLoadedTime = 0l;
+    private long mLastLoadedTime = 0L;
     private String mHostName = null;
 
     /** {@inheritDoc} */

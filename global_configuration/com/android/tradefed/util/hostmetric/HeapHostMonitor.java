@@ -45,7 +45,7 @@ public class HeapHostMonitor extends AbstractHostMonitor {
         mHostEvents.clear();
         // Collect the current JVM memory usage in bytes
         Runtime rt = Runtime.getRuntime();
-        long totalJvmMemory = (rt.totalMemory() - rt.freeMemory()) / (1024l * 1024l);
+        long totalJvmMemory = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
         Map<String, String> args = new HashMap<>();
         args.put(HEAP_KEY, Long.toString(totalJvmMemory));
         logEvent(args);

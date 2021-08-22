@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.cluster;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
@@ -22,26 +26,29 @@ import com.android.tradefed.monitoring.LabResourceDeviceMonitor;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResource;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Metric;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.MonitoredEntity;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
 import com.google.protobuf.util.Timestamps;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link ClusterDeviceMonitor}. */
 @RunWith(JUnit4.class)
@@ -51,19 +58,20 @@ public class ClusterDeviceMonitorTest {
     private static final String KRBSTATUS_KEY = "Kerberos status";
     private static final String PRODCERTSTATUS_CMD = "prodcertstatus";
     private static final String KRBSTATUS_CMD = "krbstatus";
-    private IRunUtil mRunUtil = null;
+    @Mock IRunUtil mRunUtil;
     private ClusterDeviceMonitor mClusterDeviceMonitor = null;
     private OptionSetter mClusterDeviceMonitorSetter = null;
     private ClusterDeviceMonitor.EventDispatcher mEventDispatcher = null;
     private IClusterOptions mClusterOptions = null;
-    private IClusterEventUploader<ClusterHostEvent> mHostEventUploader = null;
+    @Mock IClusterEventUploader<ClusterHostEvent> mHostEventUploader;
     private OptionSetter mClusterOptionSetter = null;
 
     @Before
     public void setUp() throws Exception {
-        mRunUtil = EasyMock.createMock(IRunUtil.class);
+        MockitoAnnotations.initMocks(this);
+
         mClusterOptions = new ClusterOptions();
-        mHostEventUploader = EasyMock.createMock(IClusterEventUploader.class);
+
         mClusterDeviceMonitor =
                 new ClusterDeviceMonitor() {
                     @Override
@@ -131,12 +139,12 @@ public class ClusterDeviceMonitorTest {
 
     @Test
     public void testDispatch() throws Exception {
-        Capture<ClusterHostEvent> capture = new Capture<>();
-        mHostEventUploader.postEvent(EasyMock.capture(capture));
-        mHostEventUploader.flush();
-        EasyMock.replay(mHostEventUploader);
+        ArgumentCaptor<ClusterHostEvent> capture = ArgumentCaptor.forClass(ClusterHostEvent.class);
+
         mEventDispatcher.dispatch();
-        EasyMock.verify(mHostEventUploader);
+
+        verify(mHostEventUploader).postEvent(capture.capture());
+        verify(mHostEventUploader).flush();
         ClusterHostEvent hostEvent = capture.getValue();
         Assert.assertNotNull(hostEvent.getHostName());
         Assert.assertNotNull(hostEvent.getData().get(ClusterHostEvent.TEST_HARNESS_START_TIME_KEY));
@@ -155,12 +163,12 @@ public class ClusterDeviceMonitorTest {
     public void testLabel() throws Exception {
         mClusterOptionSetter.setOptionValue("cluster:label", "label1");
         mClusterOptionSetter.setOptionValue("cluster:label", "label2");
-        Capture<ClusterHostEvent> capture = new Capture<>();
-        mHostEventUploader.postEvent(EasyMock.capture(capture));
-        mHostEventUploader.flush();
-        EasyMock.replay(mHostEventUploader);
+        ArgumentCaptor<ClusterHostEvent> capture = ArgumentCaptor.forClass(ClusterHostEvent.class);
+
         mEventDispatcher.dispatch();
-        EasyMock.verify(mHostEventUploader);
+
+        verify(mHostEventUploader).postEvent(capture.capture());
+        verify(mHostEventUploader).flush();
         ClusterHostEvent hostEvent = capture.getValue();
         Assert.assertNotNull(hostEvent.getHostName());
         Assert.assertNotNull(hostEvent.getTimestamp());
@@ -184,27 +192,25 @@ public class ClusterDeviceMonitorTest {
         CommandResult prodcertstatusMockResult = new CommandResult();
         prodcertstatusMockResult.setStdout(prodcertstatusOutput);
         prodcertstatusMockResult.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mRunUtil.runTimedCmdSilently(
-                                EasyMock.anyInt(), EasyMock.eq(PRODCERTSTATUS_CMD)))
-                .andReturn(prodcertstatusMockResult)
-                .times(1);
+        when(mRunUtil.runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(PRODCERTSTATUS_CMD)))
+                .thenReturn(prodcertstatusMockResult);
 
         String krbstatusOutput = "android-test ticket expires in 65d 19h";
         CommandResult krbstatusMockResult = new CommandResult();
         krbstatusMockResult.setStdout(krbstatusOutput);
         krbstatusMockResult.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(mRunUtil.runTimedCmdSilently(EasyMock.anyInt(), EasyMock.eq(KRBSTATUS_CMD)))
-                .andReturn(krbstatusMockResult)
-                .times(1);
-        EasyMock.replay(mRunUtil);
+        when(mRunUtil.runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(KRBSTATUS_CMD)))
+                .thenReturn(krbstatusMockResult);
 
         Map<String, String> expected = new HashMap<>();
         expected.put(PRODCERTSTATUS_KEY, prodcertstatusOutput);
         expected.put(KRBSTATUS_KEY, krbstatusOutput);
 
         Assert.assertEquals(expected, mClusterDeviceMonitor.getAdditionalHostInfo());
-        EasyMock.verify(mRunUtil);
+        verify(mRunUtil, times(1))
+                .runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(PRODCERTSTATUS_CMD));
+        verify(mRunUtil, times(1))
+                .runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(KRBSTATUS_CMD));
     }
 
     // Test getting additional host information with no commands to run
@@ -222,11 +228,8 @@ public class ClusterDeviceMonitorTest {
         CommandResult prodcertstatusMockResult = new CommandResult();
         prodcertstatusMockResult.setStdout(prodcertstatusOutput);
         prodcertstatusMockResult.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mRunUtil.runTimedCmdSilently(
-                                EasyMock.anyInt(), EasyMock.eq(PRODCERTSTATUS_CMD)))
-                .andReturn(prodcertstatusMockResult)
-                .times(1);
+        when(mRunUtil.runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(PRODCERTSTATUS_CMD)))
+                .thenReturn(prodcertstatusMockResult);
 
         String krbstatusOutput = "android-test ticket expires in 65d 19h";
         String krbstatusError = "Some terrible failure";
@@ -234,27 +237,28 @@ public class ClusterDeviceMonitorTest {
         krbstatusMockResult.setStdout(krbstatusOutput);
         krbstatusMockResult.setStderr(krbstatusError);
         krbstatusMockResult.setStatus(CommandStatus.FAILED);
-        EasyMock.expect(mRunUtil.runTimedCmdSilently(EasyMock.anyInt(), EasyMock.eq(KRBSTATUS_CMD)))
-                .andReturn(krbstatusMockResult)
-                .times(1);
-        EasyMock.replay(mRunUtil);
+        when(mRunUtil.runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(KRBSTATUS_CMD)))
+                .thenReturn(krbstatusMockResult);
 
         Map<String, String> expected = new HashMap<>();
         expected.put(PRODCERTSTATUS_KEY, prodcertstatusOutput);
         expected.put(KRBSTATUS_KEY, krbstatusError);
 
         Assert.assertEquals(expected, mClusterDeviceMonitor.getAdditionalHostInfo());
-        EasyMock.verify(mRunUtil);
+        verify(mRunUtil, times(1))
+                .runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(PRODCERTSTATUS_CMD));
+        verify(mRunUtil, times(1))
+                .runTimedCmdSilently(Mockito.anyLong(), Mockito.eq(KRBSTATUS_CMD));
     }
 
     @Test
     public void testDeviceExtraInfo() throws Exception {
-        Capture<ClusterHostEvent> capture = new Capture<>();
-        mHostEventUploader.postEvent(EasyMock.capture(capture));
-        mHostEventUploader.flush();
-        EasyMock.replay(mHostEventUploader);
+        ArgumentCaptor<ClusterHostEvent> capture = ArgumentCaptor.forClass(ClusterHostEvent.class);
+
         mEventDispatcher.dispatch();
-        EasyMock.verify(mHostEventUploader);
+
+        verify(mHostEventUploader).postEvent(capture.capture());
+        verify(mHostEventUploader).flush();
         ClusterHostEvent hostEvent = capture.getValue();
         Assert.assertNotNull(hostEvent.getHostName());
         Assert.assertNotNull(hostEvent.getTimestamp());

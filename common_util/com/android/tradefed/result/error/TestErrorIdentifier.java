@@ -28,7 +28,8 @@ public enum TestErrorIdentifier implements ErrorIdentifier {
     TEST_ABORTED(530_005, FailureStatus.TEST_FAILURE),
     OUTPUT_PARSER_ERROR(530_006, FailureStatus.TEST_FAILURE),
     TEST_BINARY_EXIT_CODE_ERROR(530_007, FailureStatus.TEST_FAILURE),
-    TEST_BINARY_TIMED_OUT(530_008, FailureStatus.TIMED_OUT);
+    TEST_BINARY_TIMED_OUT(530_008, FailureStatus.TIMED_OUT),
+    MODIFIED_FOLDABLE_STATE(530_009, FailureStatus.TEST_FAILURE);
 
     private final long code;
     private final @Nonnull FailureStatus status;

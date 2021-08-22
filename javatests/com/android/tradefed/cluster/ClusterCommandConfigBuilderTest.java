@@ -36,6 +36,7 @@ import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 
+import org.json.JSONException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -52,6 +53,7 @@ import org.mockito.junit.MockitoRule;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -110,7 +112,8 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_commandProperties() throws IOException, ConfigurationException {
+    public void testBuild_commandProperties()
+            throws IOException, ConfigurationException, JSONException {
         builder.build();
         // command properties and work directory were injected
         verify(mConfig, times(1)).injectOptionValue("cluster:request-id", REQUEST_ID);
@@ -121,7 +124,8 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_targetPreparers() throws IOException, ConfigurationException {
+    public void testBuild_targetPreparers()
+            throws IOException, ConfigurationException, JSONException {
         // Configure a StubTargetPreparer with a single option
         MultiMap<String, String> options = new MultiMap<>();
         options.put("no-test-boolean-option", ""); // will flip value to false
@@ -142,7 +146,8 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_resultReporters() throws IOException, ConfigurationException {
+    public void testBuild_resultReporters()
+            throws IOException, ConfigurationException, JSONException {
         // Configure a TextResultReporter
         TradefedConfigObject reporterConfig =
                 new TradefedConfigObject(
@@ -164,7 +169,7 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_envVars() throws IOException, ConfigurationException {
+    public void testBuild_envVars() throws IOException, ConfigurationException, JSONException {
         mTestEnvironment.addEnvVar("E1", "V1");
         mTestContext.addEnvVars(Map.of("E2", "V2"));
 
@@ -177,7 +182,7 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_javaOptions() throws IOException, ConfigurationException {
+    public void testBuild_javaOptions() throws IOException, ConfigurationException, JSONException {
         mTestEnvironment.addJvmOption("jvm_option");
         mTestEnvironment.addJavaProperty("java_property", "java_value");
 
@@ -189,7 +194,7 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_outputFiles() throws IOException, ConfigurationException {
+    public void testBuild_outputFiles() throws IOException, ConfigurationException, JSONException {
         mTestEnvironment.setOutputFileUploadUrl("base_url");
         mTestEnvironment.addOutputFilePattern("pattern");
 
@@ -202,7 +207,7 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_timeouts() throws IOException, ConfigurationException {
+    public void testBuild_timeouts() throws IOException, ConfigurationException, JSONException {
         mTestEnvironment.setInvocationTimeout(12345);
         mTestEnvironment.setOutputIdleTimeout(1234);
 
@@ -213,22 +218,27 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_testResources() throws IOException, ConfigurationException {
-        mTestResources.add(new TestResource("N1", "U1", true, "D1"));
-        mTestContext.addTestResource(new TestResource("N2", "U2", false, null));
+    public void testBuild_testResources()
+            throws IOException, ConfigurationException, JSONException {
+        mTestResources.add(new TestResource("N1", "U1", true, "D1", false, Arrays.asList("F1")));
+        mTestContext.addTestResource(new TestResource("N2", "U2"));
 
         builder.build();
         // test resources from both sources were injected
-        verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N1", "U1");
-        verify(mConfig, times(1)).injectOptionValue("cluster:decompress-test-resource", "N1", "D1");
-        verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N2", "U2");
-        verify(mConfig, times(0)).injectOptionValue("cluster:decompress-test-resource", "N2", "");
+        verify(mConfig, times(1))
+                .injectOptionValue(
+                        "cluster:test-resource", mTestResources.get(0).toJson().toString());
+        verify(mConfig, times(1))
+                .injectOptionValue(
+                        "cluster:test-resource",
+                        mTestContext.getTestResources().get(0).toJson().toString());
     }
 
     @Test
-    public void testBuild_extraOptions() throws IOException, ConfigurationException {
+    public void testBuild_extraOptions() throws IOException, ConfigurationException, JSONException {
         mCommand.getExtraOptions().put("key", "hello");
-        mCommand.getExtraOptions().put("key", "world");
+        mCommand.getExtraOptions().put("key", "${E1}");
+        mTestEnvironment.addEnvVar("E1", "world");
 
         builder.build();
         // extra options with same key were injected
@@ -237,7 +247,8 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
-    public void testBuild_useParallelSetup() throws IOException, ConfigurationException {
+    public void testBuild_useParallelSetup()
+            throws IOException, ConfigurationException, JSONException {
         mTestEnvironment.setUseParallelSetup(true);
         builder.build();
         verify(mConfig, times(1)).injectOptionValue("parallel-setup", "true");

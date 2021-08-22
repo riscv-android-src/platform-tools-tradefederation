@@ -15,13 +15,12 @@
  */
 package com.android.tradefed.config;
 
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.contains;
-import static org.easymock.EasyMock.endsWith;
-import static org.easymock.EasyMock.eq;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.proxy.AutomatedReporters;
@@ -36,13 +35,14 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,15 +54,16 @@ public class SandboxConfigurationFactoryTest {
 
     private SandboxConfigurationFactory mFactory;
     private File mConfig;
-    private ISandbox mFakeSandbox;
-    private IRunUtil mMockRunUtil;
+    @Mock ISandbox mFakeSandbox;
+    @Mock IRunUtil mMockRunUtil;
 
     @Before
     public void setUp() throws IOException, ConfigurationException {
+        MockitoAnnotations.initMocks(this);
+
         mFactory = SandboxConfigurationFactory.getInstance();
         mConfig = FileUtil.createTempFile("sandbox-config-test", ".xml");
-        mFakeSandbox = EasyMock.createMock(ISandbox.class);
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+
         try {
             GlobalConfiguration.createGlobalConfiguration(new String[] {});
         } catch (IllegalStateException ignore) {
@@ -76,28 +77,24 @@ public class SandboxConfigurationFactoryTest {
     }
 
     private void expectDumpCmd(CommandResult res) {
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                endsWith("/java"),
-                                contains("-Djava.io.tmpdir="),
-                                eq("-cp"),
-                                anyObject(),
-                                eq(SandboxConfigDump.class.getCanonicalName()),
-                                eq(DumpCmd.NON_VERSIONED_CONFIG.toString()),
-                                EasyMock.anyObject(),
-                                eq(mConfig.getAbsolutePath())))
-                .andAnswer(
-                        new IAnswer<CommandResult>() {
-                            @Override
-                            public CommandResult answer() throws Throwable {
-                                String resFile = (String) EasyMock.getCurrentArguments()[7];
-                                FileUtil.writeToFile(
-                                        "<configuration><test class=\"com.android.tradefed.test"
-                                                + "type.StubTest\" /></configuration>",
-                                        new File(resFile));
-                                return res;
-                            }
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.endsWith("/java"),
+                        Mockito.contains("-Djava.io.tmpdir="),
+                        Mockito.eq("-cp"),
+                        Mockito.any(),
+                        Mockito.eq(SandboxConfigDump.class.getCanonicalName()),
+                        Mockito.eq(DumpCmd.NON_VERSIONED_CONFIG.toString()),
+                        Mockito.any(),
+                        Mockito.eq(mConfig.getAbsolutePath())))
+                .thenAnswer(
+                        invocation -> {
+                            String resFile = (String) invocation.getArguments()[7];
+                            FileUtil.writeToFile(
+                                    "<configuration><test class=\"com.android.tradefed.test"
+                                            + "type.StubTest\" /></configuration>",
+                                    new File(resFile));
+                            return res;
                         });
     }
 
@@ -107,21 +104,23 @@ public class SandboxConfigurationFactoryTest {
     @Test
     public void testCreateConfigurationFromArgs() throws ConfigurationException {
         String[] args = new String[] {mConfig.getAbsolutePath()};
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        mMockRunUtil.setEnvVariable(
-                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
-        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.SUCCESS);
         expectDumpCmd(results);
-        EasyMock.replay(mFakeSandbox, mMockRunUtil);
+
         IConfiguration config =
                 mFactory.createConfigurationFromArgs(
                         args, new StubKeyStoreClient(), mFakeSandbox, mMockRunUtil);
-        EasyMock.verify(mFakeSandbox, mMockRunUtil);
+
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil)
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        verify(mMockRunUtil)
+                .setEnvVariable(
+                        Mockito.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), Mockito.any());
+        verify(mMockRunUtil).setEnvVariablePriority(EnvPriority.SET);
         assertNotNull(config.getConfigurationObject(Configuration.SANDBOX_TYPE_NAME));
         assertEquals(mFakeSandbox, config.getConfigurationObject(Configuration.SANDBOX_TYPE_NAME));
     }
@@ -130,26 +129,17 @@ public class SandboxConfigurationFactoryTest {
     @Test
     public void testCreateConfigurationFromArgs_fail() throws Exception {
         String[] args = new String[] {mConfig.getAbsolutePath()};
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        mMockRunUtil.setEnvVariable(
-                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
-        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+
         CommandResult results = new CommandResult();
         results.setStatus(CommandStatus.FAILED);
         results.setStderr("I failed");
         expectDumpCmd(results);
         // Thin launcher is attempted, and in this case fails, so original exception is thrown.
-        EasyMock.expect(
-                        mFakeSandbox.createThinLauncherConfig(
-                                EasyMock.anyObject(), EasyMock.anyObject(),
-                                EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(null);
-        // in case of failure, tearDown is called right away for cleaning up
-        mFakeSandbox.tearDown();
-        EasyMock.replay(mFakeSandbox, mMockRunUtil);
+        when(mFakeSandbox.createThinLauncherConfig(
+                        Mockito.any(), Mockito.any(),
+                        Mockito.any(), Mockito.any()))
+                .thenReturn(null);
+
         try {
             mFactory.createConfigurationFromArgs(
                     args, new StubKeyStoreClient(), mFakeSandbox, mMockRunUtil);
@@ -157,7 +147,17 @@ public class SandboxConfigurationFactoryTest {
         } catch (SandboxConfigurationException expected) {
             // expected
         }
-        EasyMock.verify(mFakeSandbox, mMockRunUtil);
+
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil)
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        verify(mMockRunUtil)
+                .setEnvVariable(
+                        Mockito.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), Mockito.any());
+        verify(mMockRunUtil).setEnvVariablePriority(EnvPriority.SET);
+        // in case of failure, tearDown is called right away for cleaning up
+        verify(mFakeSandbox).tearDown();
     }
 
     @Test

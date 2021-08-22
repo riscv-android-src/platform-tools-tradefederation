@@ -25,14 +25,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.util.FileUtil;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.IDeviceManager;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
 import org.junit.Before;
@@ -46,8 +47,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-import java.io.OutputStream;
 import java.io.File;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -67,7 +68,7 @@ public final class RunHostCommandTargetPreparerTest {
 
     @Mock private RunHostCommandTargetPreparer.BgCommandLog mBgCommandLog;
     @Mock private IRunUtil mRunUtil;
-    @Mock private IDeviceManager mDeviceManager;
+    @Mock private IHostOptions mHostOptions;
     private RunHostCommandTargetPreparer mPreparer;
 
     @Before
@@ -80,8 +81,8 @@ public final class RunHostCommandTargetPreparerTest {
                     }
 
                     @Override
-                    IDeviceManager getDeviceManager() {
-                        return mDeviceManager;
+                    IHostOptions getHostOptions() {
+                        return mHostOptions;
                     }
 
                     @Override
@@ -106,8 +107,8 @@ public final class RunHostCommandTargetPreparerTest {
         verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
 
         // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
+        verify(mHostOptions, never()).takePermit(PermitLimitType.CONCURRENT_FLASHER);
+        verify(mHostOptions, never()).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 
     @Test
@@ -149,11 +150,11 @@ public final class RunHostCommandTargetPreparerTest {
 
         // Verify command ran with flashing permit
         mPreparer.setUp(mTestInfo);
-        InOrder inOrder = inOrder(mRunUtil, mDeviceManager);
-        inOrder.verify(mDeviceManager).takeFlashingPermit();
+        InOrder inOrder = inOrder(mRunUtil, mHostOptions);
+        inOrder.verify(mHostOptions).takePermit(PermitLimitType.CONCURRENT_FLASHER);
         inOrder.verify(mRunUtil)
                 .runTimedCmd(anyLong(), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
-        inOrder.verify(mDeviceManager).returnFlashingPermit();
+        inOrder.verify(mHostOptions).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 
     @Test
@@ -170,8 +171,8 @@ public final class RunHostCommandTargetPreparerTest {
         verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
 
         // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
+        verify(mHostOptions, never()).takePermit(PermitLimitType.CONCURRENT_FLASHER);
+        verify(mHostOptions, never()).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 
     @Test
@@ -197,11 +198,11 @@ public final class RunHostCommandTargetPreparerTest {
 
         // Verify command ran with flashing permit
         mPreparer.tearDown(mTestInfo, null);
-        InOrder inOrder = inOrder(mRunUtil, mDeviceManager);
-        inOrder.verify(mDeviceManager).takeFlashingPermit();
+        InOrder inOrder = inOrder(mRunUtil, mHostOptions);
+        inOrder.verify(mHostOptions).takePermit(PermitLimitType.CONCURRENT_FLASHER);
         inOrder.verify(mRunUtil)
                 .runTimedCmd(anyLong(), eq("command"), eq("argument"), eq(DEVICE_SERIAL));
-        inOrder.verify(mDeviceManager).returnFlashingPermit();
+        inOrder.verify(mHostOptions).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 
     @Test
@@ -245,8 +246,8 @@ public final class RunHostCommandTargetPreparerTest {
                 eq(file1.getAbsolutePath()), eq(file2.getAbsolutePath()));
 
         // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
+        verify(mHostOptions, never()).takePermit(PermitLimitType.CONCURRENT_FLASHER);
+        verify(mHostOptions, never()).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
 
         FileUtil.recursiveDelete(tmpDir);
     }
@@ -268,7 +269,7 @@ public final class RunHostCommandTargetPreparerTest {
                 eq("$EXTRA_FILE(test1)"), eq("$EXTRA_FILE(test2)"));
 
         // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
+        verify(mHostOptions, never()).takePermit(PermitLimitType.CONCURRENT_FLASHER);
+        verify(mHostOptions, never()).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 }

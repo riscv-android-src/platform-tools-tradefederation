@@ -100,4 +100,18 @@ public interface IFileDownloader {
             throws BuildRetrievalError, IOException {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * If concurrency limit is supported, take a download permit.
+     */
+    public default void acquireDownloadPermit() {
+        // Do nothing by default
+    }
+
+    /**
+     * If concurrency limit is supported, release a download permit.
+     */
+    public default void releaseDownloadPermit() {
+        // Do nothing by default
+    }
 }
