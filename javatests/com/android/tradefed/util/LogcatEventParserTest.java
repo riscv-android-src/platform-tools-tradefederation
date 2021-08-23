@@ -19,19 +19,24 @@ package com.android.tradefed.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.mockito.Mock;
+import org.mockito.Captor;
 
 import java.util.concurrent.TimeUnit;
 
@@ -50,13 +55,13 @@ public class LogcatEventParserTest {
     private static final long EVENT_TIMEOUT_MS = 5 * 1000L;
 
     private LogcatEventParser mParser;
-    private ITestDevice mTestDevice;
-    private IDevice mNativeDevice;
-    private Capture<IShellOutputReceiver> mShellOutputReceiverCapture;
+    @Mock ITestDevice mTestDevice;
+    @Mock IDevice mNativeDevice;
+    @Captor ArgumentCaptor<IShellOutputReceiver> mShellOutputReceiverCapture;
 
     @Before
     public void setUp() {
-        mTestDevice = EasyMock.createNiceMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
 
         mParser = new LogcatEventParser(mTestDevice);
         mParser.registerEventTrigger(
@@ -158,26 +163,24 @@ public class LogcatEventParserTest {
         mParser.registerEventTrigger(
                 "update_engine", "Update successfully applied", LogcatEventType.UPDATE_COMPLETE);
 
-        EasyMock.expect(mTestDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
-        mNativeDevice = EasyMock.createNiceMock(IDevice.class);
-        EasyMock.expect(mTestDevice.getIDevice()).andStubReturn(mNativeDevice);
-        mShellOutputReceiverCapture = new Capture<>();
-        try {
-            mNativeDevice.executeShellCommand(
-                    EasyMock.isA(String.class),
-                    EasyMock.capture(mShellOutputReceiverCapture),
-                    EasyMock.anyInt(),
-                    EasyMock.isA(TimeUnit.class));
-            EasyMock.expectLastCall();
-        } catch (Exception e) {
-            fail(e.toString());
-        }
+        when(mTestDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
 
-        EasyMock.replay(mTestDevice, mNativeDevice);
+        Mockito.lenient().when(mTestDevice.getIDevice()).thenReturn(mNativeDevice);
+
         mParser.start();
         // Allow the BackgroundDeviceAction to start
         new RunUtil().sleep(1000);
-        EasyMock.verify(mTestDevice, mNativeDevice);
+
+        try {
+            verify(mNativeDevice, Mockito.atLeastOnce())
+                    .executeShellCommand(
+                            Mockito.isA(String.class),
+                            mShellOutputReceiverCapture.capture(),
+                            Mockito.anyLong(),
+                            Mockito.isA(TimeUnit.class));
+        } catch (Exception e) {
+            fail(e.toString());
+        }
 
         IShellOutputReceiver receiver = mShellOutputReceiverCapture.getValue();
         String output = String.join("\n", LOGS_UPDATE_COMPLETE) + "\n";
@@ -186,5 +189,6 @@ public class LogcatEventParserTest {
 
         LogcatEventParser.LogcatEvent result = mParser.waitForEvent(EVENT_TIMEOUT_MS);
         assertEquals(LogcatEventType.UPDATE_COMPLETE, result.getEventType());
+
     }
 }
