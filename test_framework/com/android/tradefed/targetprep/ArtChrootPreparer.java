@@ -15,9 +15,6 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -29,6 +26,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,7 +48,15 @@ public class ArtChrootPreparer extends BaseTargetPreparer {
 
     // System mount points to replicate in the chroot.
     private static final String[] MOUNTS = {
-        "/dev", "/linkerconfig", "/proc", "/sys", "/system", "/apex/com.android.os.statsd",
+        "/apex/com.android.conscrypt",
+        "/apex/com.android.i18n",
+        "/apex/com.android.os.statsd",
+        "/apex/com.android.runtime",
+        "/dev",
+        "/linkerconfig",
+        "/proc",
+        "/sys",
+        "/system",
     };
 
     @Override
@@ -73,22 +79,16 @@ public class ArtChrootPreparer extends BaseTargetPreparer {
         }
 
         // Activate APEXes in the chroot.
-        IBuildInfo buildInfo = testInfo.getBuildInfo();
-        IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
         DeviceDescriptor deviceDesc = device.getDeviceDescriptor();
-        File tests_dir = deviceBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
-        // The art_chroot is a shared module containing comment ART test data.
-        File apexes_dir = FileUtil.getFileForPath(tests_dir, "art_chroot", "system", "apex");
-        if (apexes_dir.listFiles() == null) {
-            throw new TargetSetupError(
-                    "No apex files found in " + apexes_dir.getPath(), deviceDesc);
+        File art_apex, tempDir = null;
+        try {
+            art_apex = testInfo.getDependencyFile("com.android.art.testing.apex", /*target=*/ true);
+        } catch (FileNotFoundException e) {
+            throw new TargetSetupError("ART testing apex not found", e, deviceDesc);
         }
-        File tempDir = null;
         try {
             tempDir = FileUtil.createTempDir("art-test-apex");
-            for (File apex : apexes_dir.listFiles()) {
-                activateApex(device, tempDir, apex);
-            }
+            activateApex(device, tempDir, art_apex);
         } catch (IOException e) {
             throw new TargetSetupError("Error when activating apex", e, deviceDesc);
         } finally {
