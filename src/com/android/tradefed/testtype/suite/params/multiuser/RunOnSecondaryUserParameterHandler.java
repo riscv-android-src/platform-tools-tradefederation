@@ -20,6 +20,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer;
+import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
@@ -45,6 +46,9 @@ public class RunOnSecondaryUserParameterHandler implements IModuleParameterHandl
             List<ITargetPreparer> preparers = deviceConfig.getTargetPreparers();
             // The first thing the module will do is run on a work profile
             preparers.add(0, new RunOnSecondaryUserTargetPreparer());
+
+            // Remove the target preparer which forces onto system user
+            preparers.removeIf(preparer -> preparer instanceof RunOnSystemUserTargetPreparer);
         }
     }
 

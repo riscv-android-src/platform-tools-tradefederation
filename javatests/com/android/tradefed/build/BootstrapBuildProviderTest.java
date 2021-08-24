@@ -18,20 +18,24 @@ package com.android.tradefed.build;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
@@ -39,10 +43,12 @@ import java.io.File;
 @RunWith(JUnit4.class)
 public class BootstrapBuildProviderTest {
     private BootstrapBuildProvider mProvider;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mProvider =
                 new BootstrapBuildProvider() {
                     @Override
@@ -50,26 +56,24 @@ public class BootstrapBuildProviderTest {
                         return TestInformation.newBuilder().build().executionFiles();
                     }
                 };
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
     }
 
     @Test
     public void testGetBuild() throws Exception {
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn("5");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andStubReturn("property");
-        EasyMock.expect(mMockDevice.getProductVariant()).andStubReturn("variant");
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockDevice.getBuildAlias()).andStubReturn("alias");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getBuildId()).thenReturn("5");
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
+        when(mMockDevice.waitForDeviceShell(Mockito.anyLong())).thenReturn(true);
+        when(mMockDevice.getProperty(Mockito.any())).thenReturn("property");
+        when(mMockDevice.getProductVariant()).thenReturn("variant");
+        when(mMockDevice.getBuildFlavor()).thenReturn("flavor");
+        when(mMockDevice.getBuildAlias()).thenReturn("alias");
+
         IBuildInfo res = mProvider.getBuild(mMockDevice);
         assertNotNull(res);
         try {
             assertTrue(res instanceof IDeviceBuildInfo);
             // Ensure tests dir is never null
             assertTrue(((IDeviceBuildInfo) res).getTestsDir() != null);
-            EasyMock.verify(mMockDevice);
         } finally {
             mProvider.cleanUp(res);
         }
@@ -77,14 +81,14 @@ public class BootstrapBuildProviderTest {
 
     @Test
     public void testGetBuild_add_extra_file() throws Exception {
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn("5");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andStubReturn("property");
-        EasyMock.expect(mMockDevice.getProductVariant()).andStubReturn("variant");
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockDevice.getBuildAlias()).andStubReturn("alias");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getBuildId()).thenReturn("5");
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
+        when(mMockDevice.waitForDeviceShell(Mockito.anyLong())).thenReturn(true);
+        when(mMockDevice.getProperty(Mockito.any())).thenReturn("property");
+        when(mMockDevice.getProductVariant()).thenReturn("variant");
+        when(mMockDevice.getBuildFlavor()).thenReturn("flavor");
+        when(mMockDevice.getBuildAlias()).thenReturn("alias");
+
         OptionSetter setter = new OptionSetter(mProvider);
         File tmpDir = FileUtil.createTempDir("tmp");
         File file_1 = new File(tmpDir, "sys.img");
@@ -96,7 +100,6 @@ public class BootstrapBuildProviderTest {
             // Ensure tests dir is never null
             assertTrue(((IDeviceBuildInfo) res).getTestsDir() != null);
             assertEquals(((IDeviceBuildInfo) res).getFile("file_1"), file_1);
-            EasyMock.verify(mMockDevice);
         } finally {
             mProvider.cleanUp(res);
             FileUtil.recursiveDelete(tmpDir);
@@ -109,11 +112,11 @@ public class BootstrapBuildProviderTest {
      */
     @Test
     public void testGetBuild_stubDevice() throws Exception {
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn("5");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockDevice.getBuildAlias()).andStubReturn("alias");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getBuildId()).thenReturn("5");
+        when(mMockDevice.getIDevice()).thenReturn(new StubDevice("serial"));
+        when(mMockDevice.getBuildFlavor()).thenReturn("flavor");
+        when(mMockDevice.getBuildAlias()).thenReturn("alias");
+
         IBuildInfo res = mProvider.getBuild(mMockDevice);
         assertNotNull(res);
         try {
@@ -121,7 +124,6 @@ public class BootstrapBuildProviderTest {
             // Ensure tests dir is never null
             assertTrue(((IDeviceBuildInfo) res).getTestsDir() != null);
             assertEquals("stub", res.getBuildBranch());
-            EasyMock.verify(mMockDevice);
         } finally {
             mProvider.cleanUp(res);
         }
