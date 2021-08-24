@@ -254,6 +254,7 @@ import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostScriptTargetPreparerTest;
 import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparerTest;
+import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparerTest;
 import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
@@ -345,6 +346,8 @@ import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
 import com.android.tradefed.testtype.suite.params.SecondaryUserHandlerTest;
+import com.android.tradefed.testtype.suite.params.multiuser.RunOnSecondaryUserParameterHandlerTest;
+import com.android.tradefed.testtype.suite.params.multiuser.RunOnWorkProfileParameterHandlerTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
 import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.util.AaptParserTest;
@@ -733,6 +736,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RunHostCommandTargetPreparerTest.class,
     RunHostScriptTargetPreparerTest.class,
     RunOnSecondaryUserTargetPreparerTest.class,
+    RunOnSystemUserTargetPreparerTest.class,
     RunOnWorkProfileTargetPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
@@ -869,6 +873,8 @@ import org.junit.runners.Suite.SuiteClasses;
     InstantAppHandlerTest.class,
     MainlineModuleHandlerTest.class,
     ModuleParametersHelperTest.class,
+    RunOnSecondaryUserParameterHandlerTest.class,
+    RunOnWorkProfileParameterHandlerTest.class,
     SecondaryUserHandlerTest.class,
 
     // testtype/suite/retry

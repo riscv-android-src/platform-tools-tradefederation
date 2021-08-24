@@ -19,6 +19,7 @@ package com.android.tradefed.testtype.suite.params.multiuser;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparer;
 import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
@@ -45,6 +46,9 @@ public class RunOnWorkProfileParameterHandler implements IModuleParameterHandler
             List<ITargetPreparer> preparers = deviceConfig.getTargetPreparers();
             // The first thing the module will do is run on a work profile
             preparers.add(0, new RunOnWorkProfileTargetPreparer());
+
+            // Remove the target preparer which forces onto system user
+            preparers.removeIf(preparer -> preparer instanceof RunOnSystemUserTargetPreparer);
         }
     }
 

@@ -74,6 +74,7 @@ public class ClusterCommandLauncher
     public static final String TF_PATH = "TF_PATH";
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
     public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
+    public static final String TF_DEVICE_COUNT = "TF_DEVICE_COUNT";
 
     private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(30);
 
@@ -152,6 +153,9 @@ public class ClusterCommandLauncher
         }
         // Add device serials to env var.
         runUtil.setEnvVariable(ANDROID_SERIALS, String.join(",", mInvocationContext.getSerials()));
+        // Add device count to env var.
+        runUtil.setEnvVariable(
+                TF_DEVICE_COUNT, String.valueOf(mInvocationContext.getDevices().size()));
 
         final File testWorkDir = new File(getEnvVar(TEST_WORK_DIR, mRootDir.getAbsolutePath()));
         final File logDir = new File(mRootDir, "logs");
@@ -337,17 +341,13 @@ public class ClusterCommandLauncher
 
         final Integer shardCount = mConfiguration.getCommandOptions().getShardCount();
         final Integer shardIndex = mConfiguration.getCommandOptions().getShardIndex();
-        final Integer deviceCount = mInvocationContext.getDevices().size();
 
         if (shardCount != null && shardCount > 1) {
+            cmdArgs.add("--shard-count");
+            cmdArgs.add(Integer.toString(shardCount));
             if (shardIndex != null) {
-                cmdArgs.add("--shard-count");
-                cmdArgs.add(Integer.toString(shardCount));
                 cmdArgs.add("--shard-index");
                 cmdArgs.add(Integer.toString(shardIndex));
-            } else {
-                cmdArgs.add("--shard-count");
-                cmdArgs.add(Integer.toString(deviceCount));
             }
         }
 

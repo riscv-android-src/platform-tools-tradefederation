@@ -22,8 +22,8 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.targetprep.RebootTargetPreparer;
+import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer;
 import com.android.tradefed.targetprep.RunOnSystemUserTargetPreparer;
-import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer;
 import com.android.tradefed.testtype.suite.params.TestFilterable;
 
 import com.google.common.collect.ImmutableList;
@@ -36,13 +36,13 @@ import org.junit.runners.JUnit4;
 import java.util.Set;
 
 @RunWith(JUnit4.class)
-public class RunOnWorkProfileParameterHandlerTest {
+public class RunOnSecondaryUserParameterHandlerTest {
 
-    private static final String REQUIRE_RUN_ON_WORK_PROFILE_NAME =
-            "com.android.bedstead.harrier.annotations.RequireRunOnWorkProfile";
+    private static final String REQUIRE_RUN_ON_SECONDARY_USER_NAME =
+            "com.android.bedstead.harrier.annotations.RequireRunOnSecondaryUser";
     private static final String EXISTING_ANNOTATION_FILTER = "existing.annotation.filter";
 
-    private RunOnWorkProfileParameterHandler mHandler;
+    private RunOnSecondaryUserParameterHandler mHandler;
     private IConfiguration mModuleConfig;
 
     private static final RunOnSystemUserTargetPreparer RUN_ON_SYSTEM_USER_TARGET_PREPARER =
@@ -51,12 +51,12 @@ public class RunOnWorkProfileParameterHandlerTest {
 
     @Before
     public void setUp() {
-        mHandler = new RunOnWorkProfileParameterHandler();
+        mHandler = new RunOnSecondaryUserParameterHandler();
         mModuleConfig = new Configuration("test", "test");
     }
 
     @Test
-    public void applySetup_replacesIncludeAnnotationsWithRequireRunOnWorkProfile() {
+    public void applySetup_replacesIncludeAnnotationsWithRequireRunOnSecondaryUser() {
         TestFilterable test = new TestFilterable();
         test.addIncludeAnnotation(EXISTING_ANNOTATION_FILTER);
         mModuleConfig.setTest(test);
@@ -65,14 +65,14 @@ public class RunOnWorkProfileParameterHandlerTest {
 
         assertEquals(1, test.getIncludeAnnotations().size());
         assertEquals(
-                REQUIRE_RUN_ON_WORK_PROFILE_NAME, test.getIncludeAnnotations().iterator().next());
+                REQUIRE_RUN_ON_SECONDARY_USER_NAME, test.getIncludeAnnotations().iterator().next());
     }
 
     @Test
-    public void applySetup_removesRequireRunOnWorkProfileFromExcludeFilters() {
+    public void applySetup_removesRequireRunOnSecondaryUserFromExcludeFilters() {
         TestFilterable test = new TestFilterable();
         test.addAllExcludeAnnotation(
-                Set.of(EXISTING_ANNOTATION_FILTER, REQUIRE_RUN_ON_WORK_PROFILE_NAME));
+                Set.of(EXISTING_ANNOTATION_FILTER, REQUIRE_RUN_ON_SECONDARY_USER_NAME));
         mModuleConfig.setTest(test);
 
         mHandler.applySetup(mModuleConfig);
@@ -91,7 +91,7 @@ public class RunOnWorkProfileParameterHandlerTest {
         assertEquals(2, mModuleConfig.getTargetPreparers().size());
         assertTrue(
                 mModuleConfig.getTargetPreparers().get(0)
-                        instanceof RunOnWorkProfileTargetPreparer);
+                        instanceof RunOnSecondaryUserTargetPreparer);
         assertEquals(OTHER_TARGET_PREPARER, mModuleConfig.getTargetPreparers().get(1));
     }
 }
