@@ -22,12 +22,13 @@ import java.io.OutputStream;
 
 /**
  * An OutputStream that can be used to make {@code System.out.print()} play nice with the user's
- * {@link LineReader} buffer.
+ * {@link LineReader} unfinishedLine.
  *
  * <p>In trivial performance tests, this class did not have a measurable performance impact.
  */
 public class ConsoleReaderOutputStream extends OutputStream {
     private final LineReader mConsoleReader;
+    private String unfinishedLine = "";
 
     public ConsoleReaderOutputStream(LineReader reader) {
         if (reader == null) throw new NullPointerException();
@@ -42,7 +43,16 @@ public class ConsoleReaderOutputStream extends OutputStream {
     /** {@inheritDoc} */
     @Override
     public synchronized void write(byte[] b, int off, int len) throws IOException {
-        mConsoleReader.printAbove(new String(b, off, len));
+        // Cache unfinished lines as linereader.printAbove prints lines.
+        // TODO(b/197663114): Find a less-hacky alternative.
+        String str = unfinishedLine + new String(b, off, len);
+        int indexOfLastNewLine = str.lastIndexOf("\n");
+        if (indexOfLastNewLine == -1) {
+            unfinishedLine = new String(str);
+        } else {
+            unfinishedLine = new String(str.substring(indexOfLastNewLine + 1));
+            mConsoleReader.printAbove(str.substring(0, indexOfLastNewLine));
+        }
     }
 
     /** {@inheritDoc} */
