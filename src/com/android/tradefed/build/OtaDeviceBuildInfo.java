@@ -38,6 +38,11 @@ public class OtaDeviceBuildInfo extends DeviceBuildInfo {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
     private static final String OTA_TOOLS_DIR_KEY_NAME = "otatools-dir";
+    private static final String BASELINE_TARGET_FILE_KEY_NAME = "baseline-target-file";
+    private static final String TARGET_TARGET_FILE_KEY_NAME = "target-target-file";
+    private static final String BASELINE_OTA_TOOLS_KEY_NAME = "baseline-otatools";
+    private static final String TARGET_OTA_TOOLS_KEY_NAME = "target-otatools";
+
     protected IDeviceBuildInfo mOtaBuild;
     protected boolean mReportTargetBuild = false;
 
@@ -155,5 +160,31 @@ public class OtaDeviceBuildInfo extends DeviceBuildInfo {
 
     public File getOtaTools() {
         return getFile(OTA_TOOLS_DIR_KEY_NAME);
+    }
+
+    public void setBaselineTargetFileZip(File file, String version) {
+        setFile(BASELINE_TARGET_FILE_KEY_NAME, file, version);
+    }
+    public void setTargetTargetFileZip(File file, String version) {
+        setFile(TARGET_TARGET_FILE_KEY_NAME, file, version);
+    }
+    public File getBaselineTargetFileZip() {
+        return getFile(BASELINE_TARGET_FILE_KEY_NAME);
+    }
+    public File getTargetTargetFileZip() {
+        return getFile(TARGET_TARGET_FILE_KEY_NAME);
+    }
+
+    public void setBaselineOtatoolsZip(File file, String version) {
+        setFile(BASELINE_OTA_TOOLS_KEY_NAME, file, version);
+    }
+    public void setTargetOtatoolsZip(File file, String version) {
+        setFile(TARGET_OTA_TOOLS_KEY_NAME, file, version);
+    }
+    public File getBaselineOtatoolsZip() {
+        return getFile(BASELINE_OTA_TOOLS_KEY_NAME);
+    }
+    public File getTargetOtatoolsZip() {
+        return getFile(TARGET_OTA_TOOLS_KEY_NAME);
     }
 }

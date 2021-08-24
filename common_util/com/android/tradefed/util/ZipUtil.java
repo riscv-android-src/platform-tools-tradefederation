@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.zip.DataFormatException;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.Inflater;
@@ -112,6 +113,26 @@ public class ZipUtil {
             if (entry.isDirectory()) {
                 continue;
             } else {
+                FileUtil.writeToFile(zipFile.getInputStream(entry), childFile);
+            }
+        }
+    }
+
+    /**
+     * Utility method to extract contents of zip file into given directory
+     *
+     * @param zipFile the {@link ZipFile} to extract
+     * @param destDir the local dir to extract file to
+     * @param shouldExtract the predicate to dermine if an ZipEntry should be extracted
+     * @throws IOException if failed to extract file
+     */
+    public static void extractZip(ZipFile zipFile, File destDir, Predicate<ZipEntry> shouldExtract) throws IOException {
+        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry entry = entries.nextElement();
+            File childFile = new File(destDir, entry.getName());
+            childFile.getParentFile().mkdirs();
+            if (!entry.isDirectory() && shouldExtract.test(entry)) {
                 FileUtil.writeToFile(zipFile.getInputStream(entry), childFile);
             }
         }
