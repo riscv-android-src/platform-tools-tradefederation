@@ -126,7 +126,8 @@ public class ZipUtil {
      * @param shouldExtract the predicate to dermine if an ZipEntry should be extracted
      * @throws IOException if failed to extract file
      */
-    public static void extractZip(ZipFile zipFile, File destDir, Predicate<ZipEntry> shouldExtract) throws IOException {
+    public static void extractZip(ZipFile zipFile, File destDir, Predicate<ZipEntry> shouldExtract)
+            throws IOException {
         Enumeration<? extends ZipEntry> entries = zipFile.entries();
         while (entries.hasMoreElements()) {
             ZipEntry entry = entries.nextElement();
